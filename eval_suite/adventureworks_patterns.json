@@ -1,0 +1,210 @@
+{
+    "business_context": {
+        "industry_terms": "自行车零售与制造、B2B销售、库存管理、供应链、产品生命周期、销售区域、员工绩效、采购管理、工单生产",
+        "business_rules": "AdventureWorks是一家自行车及配件制造商，核心产品类别包括Bikes(自行车)、Components(零配件)、Clothing(服装)、Accessories(配件)。销售订单通过salesorderheader和salesorderdetail追踪，产品层级为productcategory→productsubcategory→product",
+        "data_characteristics": "产品数据包含product、productcategory、productsubcategory三层结构；销售数据通过salesorderheader(订单头)和salesorderdetail(订单明细)关联；供应商通过vendor表管理，采购通过purchaseorderheader追踪；员工信息在employee表，部门历史在employeedepartmenthistory",
+        "analysis_focus": "产品销售分析、客户价值分析、供应商采购分析、库存管理、区域销售业绩、员工绩效、生产工单完成率"
+    },
+    "example_queries": [
+        {
+            "query": "查询各产品类别的平均成本对比",
+            "category": "成本分析",
+            "sql_pattern": "SELECT pc.Name AS CategoryName, AVG(p.StandardCost) AS AvgCost FROM productcategory pc JOIN productsubcategory ps ON pc.ProductCategoryID = ps.ProductCategoryID JOIN product p ON ps.ProductSubcategoryID = p.ProductSubcategoryID GROUP BY pc.ProductCategoryID, pc.Name ORDER BY AvgCost DESC",
+            "description": "产品类别成本分析（与aw031型号统计不同，关注成本维度）"
+        },
+        {
+            "query": "查询采购量最多的10个产品",
+            "category": "采购分析",
+            "sql_pattern": "SELECT p.Name AS ProductName, SUM(pod.OrderQty) AS TotalQty FROM product p JOIN purchaseorderdetail pod ON p.ProductID = pod.ProductID GROUP BY p.ProductID, p.Name ORDER BY TotalQty DESC LIMIT 10",
+            "description": "采购量使用purchaseorderdetail.OrderQty字段求和（与销售额类似的聚合模式）"
+        },
+        {
+            "query": "查询每个销售人员的客户数量",
+            "category": "销售分析",
+            "sql_pattern": "SELECT sp.BusinessEntityID, COUNT(DISTINCT soh.CustomerID) AS CustomerCount FROM salesperson sp JOIN salesorderheader soh ON sp.BusinessEntityID = soh.SalesPersonID GROUP BY sp.BusinessEntityID ORDER BY CustomerCount DESC",
+            "description": "销售人员通过SalesPersonID与订单关联（与区域订单类似的JOIN模式）"
+        },
+        {
+            "query": "查询每个产品有多少个供应商",
+            "category": "供应链分析",
+            "sql_pattern": "SELECT p.Name AS ProductName, COUNT(pv.BusinessEntityID) AS VendorCount FROM product p JOIN productvendor pv ON p.ProductID = pv.ProductID GROUP BY p.ProductID, p.Name ORDER BY VendorCount DESC",
+            "description": "产品供应商关系通过productvendor表关联（与供应商采购类似的GROUP BY模式）"
+        },
+        {
+            "query": "查询购买过服装(Clothing)类产品的区域数量",
+            "category": "区域分析",
+            "sql_pattern": "SELECT COUNT(DISTINCT soh.TerritoryID) AS TerritoryCount FROM salesorderheader soh JOIN salesorderdetail sod ON soh.SalesOrderID = sod.SalesOrderID JOIN product p ON sod.ProductID = p.ProductID JOIN productsubcategory ps ON p.ProductSubcategoryID = ps.ProductSubcategoryID JOIN productcategory pc ON ps.ProductCategoryID = pc.ProductCategoryID WHERE pc.Name = 'Clothing'",
+            "description": "多表关联过滤类别后统计区域（与Bikes客户统计类似的5表JOIN模式）"
+        },
+        {
+            "query": "查询每个产品的总采购成本",
+            "category": "成本分析",
+            "sql_pattern": "SELECT p.Name AS ProductName, SUM(pod.LineTotal) AS TotalCost FROM product p JOIN purchaseorderdetail pod ON p.ProductID = pod.ProductID GROUP BY p.ProductID, p.Name ORDER BY TotalCost DESC LIMIT 10",
+            "description": "采购成本使用purchaseorderdetail.LineTotal（与客户订单金额类似的SUM模式）"
+        },
+        {
+            "query": "查询没有采购记录的供应商",
+            "category": "供应商分析",
+            "sql_pattern": "SELECT v.Name FROM vendor v LEFT JOIN purchaseorderheader poh ON v.BusinessEntityID = poh.VendorID WHERE poh.VendorID IS NULL",
+            "description": "使用LEFT JOIN配合IS NULL检查无关联记录（与无销售产品类似的LEFT JOIN模式）"
+        },
+        {
+            "query": "查询每季度的采购趋势",
+            "category": "时间序列分析",
+            "sql_pattern": "SELECT YEAR(OrderDate) AS Year, QUARTER(OrderDate) AS Quarter, SUM(TotalDue) AS QuarterlyPurchase, COUNT(*) AS OrderCount FROM purchaseorderheader GROUP BY YEAR(OrderDate), QUARTER(OrderDate) ORDER BY Year, Quarter",
+            "description": "时间分析使用YEAR()和QUARTER()函数（与月度销售趋势类似的时间序列模式）"
+        },
+        {
+            "query": "计算每个销售区域的订单占比",
+            "category": "高级分析",
+            "sql_pattern": "WITH TerritorySales AS (SELECT t.Name AS Territory, COUNT(soh.SalesOrderID) AS OrderCount FROM salesterritory t JOIN salesorderheader soh ON t.TerritoryID = soh.TerritoryID GROUP BY t.TerritoryID, t.Name), TotalOrders AS (SELECT SUM(OrderCount) AS Total FROM TerritorySales) SELECT ts.Territory, ts.OrderCount, ts.OrderCount / tos.Total * 100 AS Percentage FROM TerritorySales ts, TotalOrders tos ORDER BY Percentage DESC",
+            "description": "使用CTE计算占比（与类别销售占比类似的CTE模式但针对区域订单）"
+        },
+        {
+            "query": "查询库存周转率高的库位",
+            "category": "库存分析",
+            "sql_pattern": "SELECT l.Name AS LocationName, SUM(pi.Quantity) AS TotalStock, COUNT(DISTINCT pi.ProductID) AS ProductVariety FROM location l JOIN productinventory pi ON l.LocationID = pi.LocationID GROUP BY l.LocationID, l.Name ORDER BY ProductVariety DESC",
+            "description": "库位库存统计通过location与productinventory关联（与库存预警类似的库存表JOIN模式）"
+        }
+    ],
+    "query_patterns": [
+        {
+            "id": "product_category_join",
+            "intent": "产品分类关联",
+            "keywords": [
+                "产品类别",
+                "产品分类",
+                "类别",
+                "分类",
+                "category"
+            ],
+            "pattern": "product p JOIN productsubcategory ps ON p.ProductSubcategoryID = ps.ProductSubcategoryID JOIN productcategory pc ON ps.ProductCategoryID = pc.ProductCategoryID",
+            "explanation": "AdventureWorks产品层级: productcategory → productsubcategory → product",
+            "common_mistakes": [
+                "直接关联product和productcategory",
+                "忘记中间表productsubcategory"
+            ]
+        },
+        {
+            "id": "sales_order_join",
+            "intent": "销售订单关联",
+            "keywords": [
+                "销售",
+                "订单",
+                "销售额",
+                "收入",
+                "sales",
+                "order"
+            ],
+            "pattern": "salesorderheader o JOIN salesorderdetail od ON o.SalesOrderID = od.SalesOrderID",
+            "explanation": "订单头包含TotalDue总金额，订单明细包含LineTotal单行金额",
+            "common_mistakes": [
+                "混淆TotalDue和LineTotal",
+                "忘记关联明细表"
+            ]
+        },
+        {
+            "id": "vendor_purchase",
+            "intent": "供应商采购",
+            "keywords": [
+                "供应商",
+                "采购",
+                "vendor",
+                "purchase"
+            ],
+            "pattern": "vendor v JOIN purchaseorderheader po ON v.BusinessEntityID = po.VendorID",
+            "explanation": "供应商主键是BusinessEntityID，通过它关联采购订单的VendorID",
+            "common_mistakes": [
+                "使用BusinessEntityID而非VendorID关联purchaseorderheader"
+            ]
+        },
+        {
+            "id": "territory_sales",
+            "intent": "销售区域分析",
+            "keywords": [
+                "区域",
+                "销售区域",
+                "territory",
+                "地区"
+            ],
+            "pattern": "salesterritory t JOIN salesorderheader o ON t.TerritoryID = o.TerritoryID",
+            "explanation": "区域通过TerritoryID关联订单",
+            "common_mistakes": [
+                "混淆CountryRegionCode和TerritoryID"
+            ]
+        },
+        {
+            "id": "employee_department",
+            "intent": "员工部门查询",
+            "keywords": [
+                "员工",
+                "部门",
+                "employee",
+                "department"
+            ],
+            "pattern": "employee e JOIN employeedepartmenthistory edh ON e.EmployeeID = edh.EmployeeID WHERE edh.EndDate IS NULL",
+            "explanation": "使用EndDate IS NULL获取当前在职部门",
+            "common_mistakes": [
+                "忘记过滤历史记录"
+            ]
+        },
+        {
+            "id": "inventory_check",
+            "intent": "库存查询",
+            "keywords": [
+                "库存",
+                "存货",
+                "inventory",
+                "stock"
+            ],
+            "pattern": "product p JOIN productinventory pi ON p.ProductID = pi.ProductID",
+            "explanation": "库存数量在productinventory.Quantity，再订购点在product.ReorderPoint",
+            "common_mistakes": [
+                "在product表找不到Quantity字段"
+            ]
+        },
+        {
+            "id": "shift_employee",
+            "intent": "班次员工查询",
+            "keywords": [
+                "班次",
+                "轮班",
+                "shift",
+                "工作时间"
+            ],
+            "pattern": "shift s JOIN employeedepartmenthistory edh ON s.ShiftID = edh.ShiftID JOIN employee e ON edh.BusinessEntityID = e.BusinessEntityID WHERE edh.EndDate IS NULL",
+            "explanation": "员工班次通过employeedepartmenthistory.ShiftID关联，使用EndDate IS NULL获取当前在职员工",
+            "common_mistakes": [
+                "忘记过滤历史记录",
+                "直接关联employee和shift"
+            ]
+        }
+    ],
+    "key_concepts": {
+        "Bikes": "自行车类产品，是AdventureWorks的核心产品线，分为Mountain Bikes、Road Bikes、Touring Bikes",
+        "Components": "自行车零配件，包括车架(Frames)、车轮(Wheels)、刹车(Brakes)等",
+        "LineTotal": "salesorderdetail中的单行销售金额，已包含折扣计算",
+        "TotalDue": "salesorderheader中的订单总金额，包含税费和运费",
+        "ProductSubcategoryID": "产品关联类别的关键字段，需通过productsubcategory中间表",
+        "VendorID": "vendor表的主键，用于关联purchaseorderheader",
+        "TerritoryID": "销售区域ID，用于关联salesorderheader和salesperson"
+    },
+    "common_metrics": {
+        "销售额": "SUM(od.LineTotal) 或 SUM(o.TotalDue)",
+        "订单数量": "COUNT(SalesOrderID) 或 COUNT(DISTINCT SalesOrderID)",
+        "客户数量": "COUNT(DISTINCT CustomerID)",
+        "产品数量": "COUNT(ProductID)",
+        "平均订单金额": "AVG(TotalDue)",
+        "利润率": "(ListPrice - StandardCost) / ListPrice * 100"
+    },
+    "term_dictionary": {
+        "产品类别": "productcategory表，顶层产品分类(Bikes/Components/Clothing/Accessories)",
+        "产品子类别": "productsubcategory表，二级产品分类",
+        "销售订单": "salesorderheader表，订单主表",
+        "订单明细": "salesorderdetail表，订单行项目",
+        "供应商": "vendor表，产品供应商信息",
+        "采购订单": "purchaseorderheader表，采购订单主表",
+        "销售区域": "salesterritory表，销售地区划分",
+        "产品库存": "productinventory表，各库位的产品库存"
+    }
+}

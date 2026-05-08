@@ -1,0 +1,46 @@
+"""Validate Gold SQL against MySQL - writes to file"""
+import json
+from sqlalchemy import create_engine, text
+import pandas as pd
+
+def test_gold_sql():
+    with open("eval_suite/evaluation_set.json", "r", encoding="utf-8") as f:
+        cases = json.load(f)
+    
+    engine = create_engine(
+        "mysql+pymysql://root:1234567@localhost:3306/northwind",
+        pool_pre_ping=True
+    )
+    
+    results = []
+    failed = []
+    
+    for case in cases:
+        case_id = case["id"]
+        gold_sql = case["gold_sql"]
+        
+        try:
+            with engine.connect() as conn:
+                df = pd.read_sql_query(text(gold_sql), conn)
+            results.append(f"[OK] {case_id}: {len(df)} rows")
+        except Exception as e:
+            err_msg = str(e)[:200].replace('\n', ' ')
+            failed.append({"id": case_id, "error": err_msg})
+            results.append(f"[FAIL] {case_id}: {err_msg[:80]}")
+    
+    # Write results to file
+    with open("test_gold_sql_result.txt", "w", encoding="utf-8") as f:
+        f.write(f"Total: {len(cases)}, Passed: {len(cases) - len(failed)}, Failed: {len(failed)}\n\n")
+        for r in results:
+            f.write(r + "\n")
+        
+        if failed:
+            f.write("\n\nFailed Gold SQL Details:\n" + "="*60 + "\n")
+            for item in failed:
+                f.write(f"\n{item['id']}:\n  {item['error']}\n")
+    
+    print(f"Results written to test_gold_sql_result.txt")
+    print(f"Total: {len(cases)}, Passed: {len(cases) - len(failed)}, Failed: {len(failed)}")
+
+if __name__ == "__main__":
+    test_gold_sql()

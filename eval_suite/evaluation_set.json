@@ -1,0 +1,645 @@
+[
+    {
+        "id": "q001",
+        "difficulty": "easy",
+        "question": "查询所有产品类别的名称",
+        "gold_sql": "SELECT CategoryName FROM categories",
+        "expected_result_type": "table",
+        "tags": [
+            "single_table",
+            "select"
+        ],
+        "description": "Easy - 单表简单查询"
+    },
+    {
+        "id": "q002",
+        "difficulty": "easy",
+        "question": "统计订单总数",
+        "gold_sql": "SELECT COUNT(*) AS total_orders FROM orders",
+        "expected_result_type": "single_value",
+        "tags": [
+            "single_table",
+            "count"
+        ],
+        "description": "Easy - COUNT聚合"
+    },
+    {
+        "id": "q003",
+        "difficulty": "easy",
+        "question": "查询所有在德国的客户",
+        "gold_sql": "SELECT CustomerID, CompanyName, City FROM customers WHERE Country = 'Germany'",
+        "expected_result_type": "table",
+        "tags": [
+            "single_table",
+            "where"
+        ],
+        "description": "Easy - WHERE过滤"
+    },
+    {
+        "id": "q004",
+        "difficulty": "easy",
+        "question": "列出所有供应商的公司名称和所在城市",
+        "gold_sql": "SELECT CompanyName, City FROM suppliers",
+        "expected_result_type": "table",
+        "tags": [
+            "single_table",
+            "select"
+        ],
+        "description": "Easy - 多列查询"
+    },
+    {
+        "id": "q005",
+        "difficulty": "easy",
+        "question": "查询库存数量大于50的产品",
+        "gold_sql": "SELECT ProductName, UnitsInStock FROM products WHERE UnitsInStock > 50",
+        "expected_result_type": "table",
+        "tags": [
+            "single_table",
+            "where",
+            "comparison"
+        ],
+        "description": "Easy - 数值比较"
+    },
+    {
+        "id": "q006",
+        "difficulty": "easy",
+        "question": "有多少个不同的客户国家",
+        "gold_sql": "SELECT COUNT(DISTINCT Country) AS country_count FROM customers",
+        "expected_result_type": "single_value",
+        "tags": [
+            "single_table",
+            "distinct",
+            "count"
+        ],
+        "description": "Easy - DISTINCT统计"
+    },
+    {
+        "id": "q007",
+        "difficulty": "easy",
+        "question": "查询已停产的产品名称",
+        "gold_sql": "SELECT ProductName FROM products WHERE Discontinued = 1",
+        "expected_result_type": "table",
+        "tags": [
+            "single_table",
+            "where",
+            "boolean"
+        ],
+        "description": "Easy - 布尔条件"
+    },
+    {
+        "id": "q008",
+        "difficulty": "easy",
+        "question": "查询所有承运商信息",
+        "gold_sql": "SELECT * FROM shippers",
+        "expected_result_type": "table",
+        "tags": [
+            "single_table",
+            "select_all"
+        ],
+        "description": "Easy - 全表查询"
+    },
+    {
+        "id": "q009",
+        "difficulty": "easy",
+        "question": "查询单价最高的产品",
+        "gold_sql": "SELECT ProductName, Price FROM products ORDER BY Price DESC LIMIT 1",
+        "expected_result_type": "single_value",
+        "tags": [
+            "single_table",
+            "order_by",
+            "limit"
+        ],
+        "description": "Easy - ORDER BY + LIMIT"
+    },
+    {
+        "id": "q010",
+        "difficulty": "easy",
+        "question": "查询伦敦的客户和供应商数量",
+        "gold_sql": "SELECT 'customers' AS type, COUNT(*) AS count FROM customers WHERE City = 'London' UNION ALL SELECT 'suppliers', COUNT(*) FROM suppliers WHERE City = 'London'",
+        "expected_result_type": "table",
+        "tags": [
+            "union",
+            "count"
+        ],
+        "description": "Easy - 简单UNION"
+    },
+    {
+        "id": "q011",
+        "difficulty": "easy",
+        "question": "列出所有员工的姓名和职务",
+        "gold_sql": "SELECT FirstName, LastName, Title FROM employees",
+        "expected_result_type": "table",
+        "tags": [
+            "single_table",
+            "select"
+        ],
+        "description": "Easy - 多列选择"
+    },
+    {
+        "id": "q012",
+        "difficulty": "easy",
+        "question": "查询1997年的订单数量",
+        "gold_sql": "SELECT COUNT(*) AS order_count FROM orders WHERE YEAR(OrderDate) = 1997",
+        "expected_result_type": "single_value",
+        "tags": [
+            "single_table",
+            "date_function",
+            "count"
+        ],
+        "description": "Easy - 日期函数"
+    },
+    {
+        "id": "q013",
+        "difficulty": "medium",
+        "question": "统计每个国家有多少客户",
+        "gold_sql": "SELECT Country, COUNT(*) AS customer_count FROM customers GROUP BY Country ORDER BY customer_count DESC",
+        "expected_result_type": "table",
+        "tags": [
+            "group_by",
+            "count",
+            "order_by"
+        ],
+        "description": "Medium - GROUP BY基础"
+    },
+    {
+        "id": "q014",
+        "difficulty": "medium",
+        "question": "计算每个类别的产品数量",
+        "gold_sql": "SELECT c.CategoryName, COUNT(p.ProductID) AS product_count FROM categories c LEFT JOIN products p ON c.CategoryID = p.CategoryID GROUP BY c.CategoryID, c.CategoryName",
+        "expected_result_type": "table",
+        "tags": [
+            "join",
+            "group_by",
+            "count"
+        ],
+        "description": "Medium - JOIN + GROUP BY"
+    },
+    {
+        "id": "q015",
+        "difficulty": "medium",
+        "question": "查询每个员工处理的订单数量",
+        "gold_sql": "SELECT e.FirstName, e.LastName, COUNT(o.OrderID) AS order_count FROM employees e LEFT JOIN orders o ON e.EmployeeID = o.EmployeeID GROUP BY e.EmployeeID, e.FirstName, e.LastName",
+        "expected_result_type": "table",
+        "tags": [
+            "join",
+            "group_by",
+            "count"
+        ],
+        "description": "Medium - 员工订单统计"
+    },
+    {
+        "id": "q016",
+        "difficulty": "medium",
+        "question": "找出订单数超过10的客户",
+        "gold_sql": "SELECT c.CompanyName, COUNT(o.OrderID) AS order_count FROM customers c JOIN orders o ON c.CustomerID = o.CustomerID GROUP BY c.CustomerID, c.CompanyName HAVING COUNT(o.OrderID) > 10",
+        "expected_result_type": "table",
+        "tags": [
+            "join",
+            "group_by",
+            "having"
+        ],
+        "description": "Medium - HAVING过滤"
+    },
+    {
+        "id": "q017",
+        "difficulty": "medium",
+        "question": "计算每个订单的总金额",
+        "gold_sql": "SELECT OrderID, SUM(UnitPrice * Quantity * (1 - Discount)) AS total_amount FROM orderdetails GROUP BY OrderID",
+        "expected_result_type": "table",
+        "tags": [
+            "group_by",
+            "arithmetic",
+            "sum"
+        ],
+        "description": "Medium - 计算表达式"
+    },
+    {
+        "id": "q018",
+        "difficulty": "medium",
+        "question": "列出每个供应商提供的产品名称",
+        "gold_sql": "SELECT s.CompanyName AS supplier, p.ProductName FROM suppliers s JOIN products p ON s.SupplierID = p.SupplierID ORDER BY s.CompanyName",
+        "expected_result_type": "table",
+        "tags": [
+            "join",
+            "order_by"
+        ],
+        "description": "Medium - 双表JOIN"
+    },
+    {
+        "id": "q019",
+        "difficulty": "medium",
+        "question": "查询平均单价超过30的产品类别",
+        "gold_sql": "SELECT c.CategoryName, AVG(p.Price) AS avg_price FROM categories c JOIN products p ON c.CategoryID = p.CategoryID GROUP BY c.CategoryID, c.CategoryName HAVING AVG(p.Price) > 30",
+        "expected_result_type": "table",
+        "tags": [
+            "join",
+            "group_by",
+            "having",
+            "avg"
+        ],
+        "description": "Medium - AVG + HAVING"
+    },
+    {
+        "id": "q020",
+        "difficulty": "medium",
+        "question": "统计每月的订单数量(1997年)",
+        "gold_sql": "SELECT MONTH(OrderDate) AS month, COUNT(*) AS order_count FROM orders WHERE YEAR(OrderDate) = 1997 GROUP BY MONTH(OrderDate) ORDER BY month",
+        "expected_result_type": "table",
+        "tags": [
+            "group_by",
+            "date_function"
+        ],
+        "description": "Medium - 按月分组"
+    },
+    {
+        "id": "q021",
+        "difficulty": "medium",
+        "question": "查询每个承运商运送的订单数量",
+        "gold_sql": "SELECT s.CompanyName, COUNT(o.OrderID) AS shipment_count FROM shippers s LEFT JOIN orders o ON s.ShipperID = o.ShipVia GROUP BY s.ShipperID, s.CompanyName",
+        "expected_result_type": "table",
+        "tags": [
+            "join",
+            "group_by",
+            "count"
+        ],
+        "description": "Medium - 承运商统计"
+    },
+    {
+        "id": "q022",
+        "difficulty": "medium",
+        "question": "找出没有下过订单的客户",
+        "gold_sql": "SELECT c.CustomerID, c.CompanyName FROM customers c LEFT JOIN orders o ON c.CustomerID = o.CustomerID WHERE o.OrderID IS NULL",
+        "expected_result_type": "table",
+        "tags": [
+            "left_join",
+            "null_check"
+        ],
+        "description": "Medium - LEFT JOIN找空"
+    },
+    {
+        "id": "q023",
+        "difficulty": "medium",
+        "question": "查询总销售额排名前5的产品",
+        "gold_sql": "SELECT p.ProductName, SUM(od.UnitPrice * od.Quantity * (1 - od.Discount)) AS total_sales FROM products p JOIN orderdetails od ON p.ProductID = od.ProductID GROUP BY p.ProductID, p.ProductName ORDER BY total_sales DESC LIMIT 5",
+        "expected_result_type": "table",
+        "tags": [
+            "join",
+            "group_by",
+            "order_by",
+            "limit"
+        ],
+        "description": "Medium - TOP N查询"
+    },
+    {
+        "id": "q024",
+        "difficulty": "medium",
+        "question": "查询发货延迟的订单(发货日期晚于要求日期)",
+        "gold_sql": "SELECT OrderID, OrderDate, RequiredDate, ShippedDate FROM orders WHERE ShippedDate > RequiredDate",
+        "expected_result_type": "table",
+        "tags": [
+            "single_table",
+            "date_comparison"
+        ],
+        "description": "Medium - 日期比较"
+    },
+    {
+        "id": "q025",
+        "difficulty": "medium",
+        "question": "统计每个地区的员工数量",
+        "gold_sql": "SELECT r.RegionDescription, COUNT(DISTINCT et.EmployeeID) AS employee_count FROM region r JOIN territories t ON r.RegionID = t.RegionID JOIN employeeterritories et ON t.TerritoryID = et.TerritoryID GROUP BY r.RegionID, r.RegionDescription",
+        "expected_result_type": "table",
+        "tags": [
+            "multi_join",
+            "group_by",
+            "distinct"
+        ],
+        "description": "Medium - 三表关联"
+    },
+    {
+        "id": "q026",
+        "difficulty": "medium",
+        "question": "查询包含5种以上产品的订单",
+        "gold_sql": "SELECT OrderID, COUNT(DISTINCT ProductID) AS product_count FROM orderdetails GROUP BY OrderID HAVING COUNT(DISTINCT ProductID) >= 5",
+        "expected_result_type": "table",
+        "tags": [
+            "group_by",
+            "having",
+            "distinct"
+        ],
+        "description": "Medium - HAVING条件"
+    },
+    {
+        "id": "q027",
+        "difficulty": "medium",
+        "question": "列出所有经理级别的员工及其下属数量",
+        "gold_sql": "SELECT m.EmployeeID, CONCAT(m.FirstName, ' ', m.LastName) AS manager_name, COUNT(e.EmployeeID) AS subordinate_count FROM employees m LEFT JOIN employees e ON m.EmployeeID = e.ReportsTo GROUP BY m.EmployeeID, m.FirstName, m.LastName HAVING COUNT(e.EmployeeID) > 0",
+        "expected_result_type": "table",
+        "tags": [
+            "self_join",
+            "group_by",
+            "having"
+        ],
+        "description": "Medium - 自关联"
+    },
+    {
+        "id": "q028",
+        "difficulty": "medium",
+        "question": "计算每个客户的平均订单金额",
+        "gold_sql": "SELECT c.CompanyName, AVG(order_total) AS avg_order_amount FROM customers c JOIN orders o ON c.CustomerID = o.CustomerID JOIN (SELECT OrderID, SUM(UnitPrice * Quantity * (1 - Discount)) AS order_total FROM orderdetails GROUP BY OrderID) od ON o.OrderID = od.OrderID GROUP BY c.CustomerID, c.CompanyName",
+        "expected_result_type": "table",
+        "tags": [
+            "subquery",
+            "join",
+            "avg"
+        ],
+        "description": "Medium - 派生表"
+    },
+    {
+        "id": "q029",
+        "difficulty": "medium",
+        "question": "查询库存低于再订购点的产品",
+        "gold_sql": "SELECT ProductName, UnitsInStock, ReorderLevel FROM products WHERE UnitsInStock < ReorderLevel AND Discontinued = 0",
+        "expected_result_type": "table",
+        "tags": [
+            "single_table",
+            "where",
+            "and"
+        ],
+        "description": "Medium - 多条件WHERE"
+    },
+    {
+        "id": "q030",
+        "difficulty": "medium",
+        "question": "统计各国的总运费",
+        "gold_sql": "SELECT ShipCountry, SUM(Freight) AS total_freight FROM orders GROUP BY ShipCountry ORDER BY total_freight DESC",
+        "expected_result_type": "table",
+        "tags": [
+            "group_by",
+            "sum",
+            "order_by"
+        ],
+        "description": "Medium - SUM聚合"
+    },
+    {
+        "id": "q031",
+        "difficulty": "hard",
+        "question": "查询每个类别中销售额最高的产品",
+        "gold_sql": "SELECT c.CategoryName, p.ProductName, sales.total_sales FROM categories c JOIN products p ON c.CategoryID = p.CategoryID JOIN (SELECT ProductID, SUM(UnitPrice * Quantity * (1 - Discount)) AS total_sales FROM orderdetails GROUP BY ProductID) sales ON p.ProductID = sales.ProductID WHERE sales.total_sales = (SELECT MAX(s2.total_sales) FROM products p2 JOIN (SELECT ProductID, SUM(UnitPrice * Quantity * (1 - Discount)) AS total_sales FROM orderdetails GROUP BY ProductID) s2 ON p2.ProductID = s2.ProductID WHERE p2.CategoryID = p.CategoryID)",
+        "expected_result_type": "table",
+        "tags": [
+            "subquery",
+            "correlated",
+            "max"
+        ],
+        "description": "Hard - 相关子查询"
+    },
+    {
+        "id": "q032",
+        "difficulty": "hard",
+        "question": "找出同时购买过产品A(ProductID=1)和产品B(ProductID=2)的客户",
+        "gold_sql": "SELECT DISTINCT c.CustomerID, c.CompanyName FROM customers c JOIN orders o ON c.CustomerID = o.CustomerID JOIN orderdetails od ON o.OrderID = od.OrderID WHERE od.ProductID = 1 AND c.CustomerID IN (SELECT o2.CustomerID FROM orders o2 JOIN orderdetails od2 ON o2.OrderID = od2.OrderID WHERE od2.ProductID = 2)",
+        "expected_result_type": "table",
+        "tags": [
+            "subquery",
+            "in",
+            "multiple_conditions"
+        ],
+        "description": "Hard - IN子查询"
+    },
+    {
+        "id": "q033",
+        "difficulty": "hard",
+        "question": "计算每个员工的销售额排名",
+        "gold_sql": "SELECT e.EmployeeID, CONCAT(e.FirstName, ' ', e.LastName) AS employee_name, SUM(od.UnitPrice * od.Quantity * (1 - od.Discount)) AS total_sales, RANK() OVER (ORDER BY SUM(od.UnitPrice * od.Quantity * (1 - od.Discount)) DESC) AS sales_rank FROM employees e JOIN orders o ON e.EmployeeID = o.EmployeeID JOIN orderdetails od ON o.OrderID = od.OrderID GROUP BY e.EmployeeID, e.FirstName, e.LastName",
+        "expected_result_type": "table",
+        "tags": [
+            "window_function",
+            "rank",
+            "group_by"
+        ],
+        "description": "Hard - RANK窗口函数"
+    },
+    {
+        "id": "q034",
+        "difficulty": "hard",
+        "question": "查询连续两个月都有订单的客户",
+        "gold_sql": "SELECT DISTINCT c.CustomerID, c.CompanyName FROM customers c WHERE EXISTS (SELECT 1 FROM orders o1 WHERE o1.CustomerID = c.CustomerID AND EXISTS (SELECT 1 FROM orders o2 WHERE o2.CustomerID = c.CustomerID AND YEAR(o2.OrderDate) = YEAR(o1.OrderDate) AND MONTH(o2.OrderDate) = MONTH(o1.OrderDate) + 1))",
+        "expected_result_type": "table",
+        "tags": [
+            "exists",
+            "correlated_subquery",
+            "date"
+        ],
+        "description": "Hard - EXISTS嵌套"
+    },
+    {
+        "id": "q035",
+        "difficulty": "hard",
+        "question": "计算每个产品的累计销售额",
+        "gold_sql": "SELECT p.ProductName, o.OrderDate, SUM(od.UnitPrice * od.Quantity * (1 - od.Discount)) AS daily_sales, SUM(SUM(od.UnitPrice * od.Quantity * (1 - od.Discount))) OVER (PARTITION BY p.ProductID ORDER BY o.OrderDate) AS cumulative_sales FROM products p JOIN orderdetails od ON p.ProductID = od.ProductID JOIN orders o ON od.OrderID = o.OrderID GROUP BY p.ProductID, p.ProductName, o.OrderDate ORDER BY p.ProductName, o.OrderDate",
+        "expected_result_type": "table",
+        "tags": [
+            "window_function",
+            "cumulative",
+            "partition"
+        ],
+        "description": "Hard - 累计窗口函数"
+    },
+    {
+        "id": "q036",
+        "difficulty": "hard",
+        "question": "查询销售额同比增长的类别",
+        "gold_sql": "SELECT curr.CategoryName, curr.year, curr.total_sales, prev.total_sales AS prev_year_sales, (curr.total_sales - prev.total_sales) / prev.total_sales * 100 AS growth_pct FROM (SELECT c.CategoryID, c.CategoryName, YEAR(o.OrderDate) AS year, SUM(od.UnitPrice * od.Quantity * (1 - od.Discount)) AS total_sales FROM categories c JOIN products p ON c.CategoryID = p.CategoryID JOIN orderdetails od ON p.ProductID = od.ProductID JOIN orders o ON od.OrderID = o.OrderID GROUP BY c.CategoryID, c.CategoryName, YEAR(o.OrderDate)) curr JOIN (SELECT c.CategoryID, YEAR(o.OrderDate) AS year, SUM(od.UnitPrice * od.Quantity * (1 - od.Discount)) AS total_sales FROM categories c JOIN products p ON c.CategoryID = p.CategoryID JOIN orderdetails od ON p.ProductID = od.ProductID JOIN orders o ON od.OrderID = o.OrderID GROUP BY c.CategoryID, YEAR(o.OrderDate)) prev ON curr.CategoryID = prev.CategoryID AND curr.year = prev.year + 1 WHERE curr.total_sales > prev.total_sales",
+        "expected_result_type": "table",
+        "tags": [
+            "self_join",
+            "derived_table",
+            "calculation"
+        ],
+        "description": "Hard - 同比计算"
+    },
+    {
+        "id": "q037",
+        "difficulty": "hard",
+        "question": "找出每个国家购买最多的产品类别",
+        "gold_sql": "WITH country_category_sales AS (SELECT c.Country, cat.CategoryName, SUM(od.UnitPrice * od.Quantity * (1 - od.Discount)) AS total_sales FROM customers c JOIN orders o ON c.CustomerID = o.CustomerID JOIN orderdetails od ON o.OrderID = od.OrderID JOIN products p ON od.ProductID = p.ProductID JOIN categories cat ON p.CategoryID = cat.CategoryID GROUP BY c.Country, cat.CategoryID, cat.CategoryName), ranked AS (SELECT *, RANK() OVER (PARTITION BY Country ORDER BY total_sales DESC) AS rn FROM country_category_sales) SELECT Country, CategoryName, total_sales FROM ranked WHERE rn = 1",
+        "expected_result_type": "table",
+        "tags": [
+            "cte",
+            "window_function",
+            "multi_join"
+        ],
+        "description": "Hard - CTE + 窗口函数"
+    },
+    {
+        "id": "q038",
+        "difficulty": "hard",
+        "question": "计算每个客户的RFM分值(最近购买、频率、金额)",
+        "gold_sql": "SELECT c.CustomerID, c.CompanyName, DATEDIFF('1998-05-06', MAX(o.OrderDate)) AS recency_days, COUNT(DISTINCT o.OrderID) AS frequency, SUM(od.UnitPrice * od.Quantity * (1 - od.Discount)) AS monetary FROM customers c JOIN orders o ON c.CustomerID = o.CustomerID JOIN orderdetails od ON o.OrderID = od.OrderID GROUP BY c.CustomerID, c.CompanyName",
+        "expected_result_type": "table",
+        "tags": [
+            "multi_join",
+            "aggregation",
+            "datediff"
+        ],
+        "description": "Hard - RFM分析"
+    },
+    {
+        "id": "q039",
+        "difficulty": "hard",
+        "question": "查询从未被任何客户订购过的产品",
+        "gold_sql": "SELECT p.ProductID, p.ProductName FROM products p WHERE NOT EXISTS (SELECT 1 FROM orderdetails od WHERE od.ProductID = p.ProductID)",
+        "expected_result_type": "table",
+        "tags": [
+            "not_exists",
+            "subquery"
+        ],
+        "description": "Hard - NOT EXISTS"
+    },
+    {
+        "id": "q040",
+        "difficulty": "hard",
+        "question": "计算每个季度的环比销售增长率",
+        "gold_sql": "WITH quarterly_sales AS (SELECT YEAR(o.OrderDate) AS year, QUARTER(o.OrderDate) AS quarter, SUM(od.UnitPrice * od.Quantity * (1 - od.Discount)) AS total_sales FROM orders o JOIN orderdetails od ON o.OrderID = od.OrderID GROUP BY YEAR(o.OrderDate), QUARTER(o.OrderDate)) SELECT year, quarter, total_sales, LAG(total_sales) OVER (ORDER BY year, quarter) AS prev_quarter_sales, (total_sales - LAG(total_sales) OVER (ORDER BY year, quarter)) / LAG(total_sales) OVER (ORDER BY year, quarter) * 100 AS growth_pct FROM quarterly_sales",
+        "expected_result_type": "table",
+        "tags": [
+            "cte",
+            "window_function",
+            "lag"
+        ],
+        "description": "Hard - LAG环比计算"
+    },
+    {
+        "id": "q041",
+        "difficulty": "hard",
+        "question": "查询每个员工负责的客户分布(按国家)",
+        "gold_sql": "SELECT e.EmployeeID, CONCAT(e.FirstName, ' ', e.LastName) AS employee_name, c.Country, COUNT(DISTINCT o.CustomerID) AS customer_count FROM employees e JOIN orders o ON e.EmployeeID = o.EmployeeID JOIN customers c ON o.CustomerID = c.CustomerID GROUP BY e.EmployeeID, e.FirstName, e.LastName, c.Country ORDER BY e.EmployeeID, customer_count DESC",
+        "expected_result_type": "table",
+        "tags": [
+            "multi_join",
+            "group_by",
+            "distinct"
+        ],
+        "description": "Hard - 多维度分组"
+    },
+    {
+        "id": "q042",
+        "difficulty": "hard",
+        "question": "找出销售额超过平均值的产品",
+        "gold_sql": "SELECT p.ProductName, SUM(od.UnitPrice * od.Quantity * (1 - od.Discount)) AS total_sales FROM products p JOIN orderdetails od ON p.ProductID = od.ProductID GROUP BY p.ProductID, p.ProductName HAVING SUM(od.UnitPrice * od.Quantity * (1 - od.Discount)) > (SELECT AVG(product_sales) FROM (SELECT SUM(UnitPrice * Quantity * (1 - Discount)) AS product_sales FROM orderdetails GROUP BY ProductID) t)",
+        "expected_result_type": "table",
+        "tags": [
+            "subquery",
+            "having",
+            "avg"
+        ],
+        "description": "Hard - 嵌套聚合"
+    },
+    {
+        "id": "q043",
+        "difficulty": "hard",
+        "question": "查询订单金额的百分位分布",
+        "gold_sql": "SELECT OrderID, order_total, NTILE(4) OVER (ORDER BY order_total) AS quartile FROM (SELECT OrderID, SUM(UnitPrice * Quantity * (1 - Discount)) AS order_total FROM orderdetails GROUP BY OrderID) t",
+        "expected_result_type": "table",
+        "tags": [
+            "window_function",
+            "ntile",
+            "derived_table"
+        ],
+        "description": "Hard - NTILE分位数"
+    },
+    {
+        "id": "q044",
+        "difficulty": "hard",
+        "question": "查询每个供应商的产品在各类别的分布",
+        "gold_sql": "SELECT s.CompanyName AS supplier, c.CategoryName, COUNT(p.ProductID) AS product_count FROM suppliers s JOIN products p ON s.SupplierID = p.SupplierID JOIN categories c ON p.CategoryID = c.CategoryID GROUP BY s.SupplierID, s.CompanyName, c.CategoryID, c.CategoryName ORDER BY s.CompanyName, product_count DESC",
+        "expected_result_type": "table",
+        "tags": [
+            "multi_join",
+            "group_by"
+        ],
+        "description": "Hard - 三表GROUP BY"
+    },
+    {
+        "id": "q045",
+        "difficulty": "hard",
+        "question": "计算每个产品的销售占比",
+        "gold_sql": "SELECT p.ProductName, SUM(od.UnitPrice * od.Quantity * (1 - od.Discount)) AS product_sales, SUM(od.UnitPrice * od.Quantity * (1 - od.Discount)) / (SELECT SUM(UnitPrice * Quantity * (1 - Discount)) FROM orderdetails) * 100 AS sales_pct FROM products p JOIN orderdetails od ON p.ProductID = od.ProductID GROUP BY p.ProductID, p.ProductName ORDER BY product_sales DESC",
+        "expected_result_type": "table",
+        "tags": [
+            "subquery",
+            "percentage",
+            "group_by"
+        ],
+        "description": "Hard - 百分比计算"
+    },
+    {
+        "id": "q046",
+        "difficulty": "extra_hard",
+        "question": "识别高价值客户(RFM分析后打分并分层)",
+        "gold_sql": "WITH rfm AS (SELECT c.CustomerID, c.CompanyName, DATEDIFF('1998-05-06', MAX(o.OrderDate)) AS recency, COUNT(DISTINCT o.OrderID) AS frequency, SUM(od.UnitPrice * od.Quantity * (1 - od.Discount)) AS monetary FROM customers c JOIN orders o ON c.CustomerID = o.CustomerID JOIN orderdetails od ON o.OrderID = od.OrderID GROUP BY c.CustomerID, c.CompanyName), rfm_scores AS (SELECT *, NTILE(5) OVER (ORDER BY recency DESC) AS r_score, NTILE(5) OVER (ORDER BY frequency) AS f_score, NTILE(5) OVER (ORDER BY monetary) AS m_score FROM rfm) SELECT CustomerID, CompanyName, recency, frequency, monetary, r_score, f_score, m_score, r_score + f_score + m_score AS total_score, CASE WHEN r_score >= 4 AND f_score >= 4 AND m_score >= 4 THEN 'Champions' WHEN r_score >= 3 AND f_score >= 3 THEN 'Loyal' WHEN r_score >= 4 THEN 'Recent' ELSE 'At Risk' END AS segment FROM rfm_scores ORDER BY total_score DESC",
+        "expected_result_type": "table",
+        "tags": [
+            "cte",
+            "window_function",
+            "case",
+            "rfm"
+        ],
+        "description": "Extra-Hard - RFM客户分层"
+    },
+    {
+        "id": "q047",
+        "difficulty": "extra_hard",
+        "question": "分析产品的购物篮关联(经常一起购买的产品组合)",
+        "gold_sql": "SELECT p1.ProductName AS product_a, p2.ProductName AS product_b, COUNT(*) AS co_occurrence FROM orderdetails od1 JOIN orderdetails od2 ON od1.OrderID = od2.OrderID AND od1.ProductID < od2.ProductID JOIN products p1 ON od1.ProductID = p1.ProductID JOIN products p2 ON od2.ProductID = p2.ProductID GROUP BY od1.ProductID, od2.ProductID, p1.ProductName, p2.ProductName HAVING COUNT(*) >= 10 ORDER BY co_occurrence DESC LIMIT 20",
+        "expected_result_type": "table",
+        "tags": [
+            "self_join",
+            "basket_analysis",
+            "having"
+        ],
+        "description": "Extra-Hard - 购物篮分析"
+    },
+    {
+        "id": "q048",
+        "difficulty": "extra_hard",
+        "question": "计算每个客户的生命周期价值(CLV)预测",
+        "gold_sql": "WITH customer_metrics AS (SELECT c.CustomerID, c.CompanyName, COUNT(DISTINCT o.OrderID) AS total_orders, SUM(od.UnitPrice * od.Quantity * (1 - od.Discount)) AS total_revenue, MIN(o.OrderDate) AS first_order, MAX(o.OrderDate) AS last_order, DATEDIFF(MAX(o.OrderDate), MIN(o.OrderDate)) AS customer_lifespan_days FROM customers c JOIN orders o ON c.CustomerID = o.CustomerID JOIN orderdetails od ON o.OrderID = od.OrderID GROUP BY c.CustomerID, c.CompanyName) SELECT CustomerID, CompanyName, total_orders, total_revenue, customer_lifespan_days, CASE WHEN customer_lifespan_days > 0 THEN total_revenue / customer_lifespan_days * 365 ELSE total_revenue END AS annualized_value, CASE WHEN customer_lifespan_days > 0 THEN (total_revenue / customer_lifespan_days * 365) * 3 ELSE total_revenue * 3 END AS estimated_3yr_clv FROM customer_metrics ORDER BY estimated_3yr_clv DESC",
+        "expected_result_type": "table",
+        "tags": [
+            "cte",
+            "clv",
+            "calculation",
+            "case"
+        ],
+        "description": "Extra-Hard - CLV预测"
+    },
+    {
+        "id": "q049",
+        "difficulty": "extra_hard",
+        "question": "分析销售趋势并识别季节性模式",
+        "gold_sql": "WITH monthly_sales AS (SELECT YEAR(o.OrderDate) AS year, MONTH(o.OrderDate) AS month, SUM(od.UnitPrice * od.Quantity * (1 - od.Discount)) AS monthly_total FROM orders o JOIN orderdetails od ON o.OrderID = od.OrderID GROUP BY YEAR(o.OrderDate), MONTH(o.OrderDate)), monthly_avg AS (SELECT month, AVG(monthly_total) AS avg_for_month FROM monthly_sales GROUP BY month) SELECT ms.year, ms.month, ms.monthly_total, ma.avg_for_month, ms.monthly_total / ma.avg_for_month AS seasonal_index, CASE WHEN ms.monthly_total > ma.avg_for_month * 1.2 THEN 'High Season' WHEN ms.monthly_total < ma.avg_for_month * 0.8 THEN 'Low Season' ELSE 'Normal' END AS season_type FROM monthly_sales ms JOIN monthly_avg ma ON ms.month = ma.month ORDER BY ms.year, ms.month",
+        "expected_result_type": "table",
+        "tags": [
+            "cte",
+            "seasonal_analysis",
+            "case",
+            "self_join"
+        ],
+        "description": "Extra-Hard - 季节性分析"
+    },
+    {
+        "id": "q050",
+        "difficulty": "extra_hard",
+        "question": "构建完整的销售仪表板数据(多维度KPI)",
+        "gold_sql": "SELECT 'Total Revenue' AS metric, CAST(SUM(od.UnitPrice * od.Quantity * (1 - od.Discount)) AS CHAR) AS value FROM orderdetails od UNION ALL SELECT 'Total Orders', CAST(COUNT(DISTINCT OrderID) AS CHAR) FROM orders UNION ALL SELECT 'Total Customers', CAST(COUNT(DISTINCT CustomerID) AS CHAR) FROM customers UNION ALL SELECT 'Total Products', CAST(COUNT(*) AS CHAR) FROM products WHERE Discontinued = 0 UNION ALL SELECT 'Avg Order Value', CAST(ROUND(AVG(order_total), 2) AS CHAR) FROM (SELECT SUM(UnitPrice * Quantity * (1 - Discount)) AS order_total FROM orderdetails GROUP BY OrderID) t UNION ALL SELECT 'Top Category', (SELECT c.CategoryName FROM categories c JOIN products p ON c.CategoryID = p.CategoryID JOIN orderdetails od ON p.ProductID = od.ProductID GROUP BY c.CategoryID, c.CategoryName ORDER BY SUM(od.UnitPrice * od.Quantity * (1 - od.Discount)) DESC LIMIT 1)",
+        "expected_result_type": "table",
+        "tags": [
+            "union",
+            "subquery",
+            "kpi",
+            "dashboard"
+        ],
+        "description": "Extra-Hard - 仪表板KPI"
+    }
+]

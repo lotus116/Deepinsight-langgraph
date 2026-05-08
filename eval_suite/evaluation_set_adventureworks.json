@@ -1,0 +1,629 @@
+[
+    {
+        "id": "aw001",
+        "difficulty": "easy",
+        "question": "查询所有产品类别的名称",
+        "gold_sql": "SELECT Name FROM productcategory",
+        "expected_result_type": "table",
+        "tags": [
+            "single_table",
+            "select"
+        ],
+        "description": "Easy - 单表简单查询"
+    },
+    {
+        "id": "aw002",
+        "difficulty": "easy",
+        "question": "统计销售订单总数",
+        "gold_sql": "SELECT COUNT(*) AS total_orders FROM salesorderheader",
+        "expected_result_type": "single_value",
+        "tags": [
+            "single_table",
+            "count"
+        ],
+        "description": "Easy - COUNT聚合"
+    },
+    {
+        "id": "aw003",
+        "difficulty": "easy",
+        "question": "列出所有供应商的名称和信用评级",
+        "gold_sql": "SELECT Name, CreditRating FROM vendor",
+        "expected_result_type": "table",
+        "tags": [
+            "single_table",
+            "select"
+        ],
+        "description": "Easy - 多列查询"
+    },
+    {
+        "id": "aw004",
+        "difficulty": "easy",
+        "question": "查询所有部门名称",
+        "gold_sql": "SELECT Name FROM department",
+        "expected_result_type": "table",
+        "tags": [
+            "single_table",
+            "select"
+        ],
+        "description": "Easy - 简单查询"
+    },
+    {
+        "id": "aw005",
+        "difficulty": "easy",
+        "question": "统计产品总数",
+        "gold_sql": "SELECT COUNT(*) AS product_count FROM product",
+        "expected_result_type": "single_value",
+        "tags": [
+            "single_table",
+            "count"
+        ],
+        "description": "Easy - 计数"
+    },
+    {
+        "id": "aw006",
+        "difficulty": "easy",
+        "question": "查询所有计量单位",
+        "gold_sql": "SELECT Name FROM unitmeasure",
+        "expected_result_type": "table",
+        "tags": [
+            "single_table",
+            "select"
+        ],
+        "description": "Easy - 简单查询"
+    },
+    {
+        "id": "aw007",
+        "difficulty": "easy",
+        "question": "查询所有联系人类型",
+        "gold_sql": "SELECT Name FROM contacttype",
+        "expected_result_type": "table",
+        "tags": [
+            "single_table",
+            "select"
+        ],
+        "description": "Easy - 简单查询"
+    },
+    {
+        "id": "aw008",
+        "difficulty": "easy",
+        "question": "统计员工总数",
+        "gold_sql": "SELECT COUNT(*) AS employee_count FROM employee",
+        "expected_result_type": "single_value",
+        "tags": [
+            "single_table",
+            "count"
+        ],
+        "description": "Easy - 计数"
+    },
+    {
+        "id": "aw009",
+        "difficulty": "easy",
+        "question": "查询所有发货方式",
+        "gold_sql": "SELECT Name FROM shipmethod",
+        "expected_result_type": "table",
+        "tags": [
+            "single_table",
+            "select"
+        ],
+        "description": "Easy - 简单查询"
+    },
+    {
+        "id": "aw010",
+        "difficulty": "easy",
+        "question": "查询产品子类别名称",
+        "gold_sql": "SELECT Name FROM productsubcategory",
+        "expected_result_type": "table",
+        "tags": [
+            "single_table",
+            "select"
+        ],
+        "description": "Easy - 简单查询"
+    },
+    {
+        "id": "aw011",
+        "difficulty": "medium",
+        "question": "查询所有在美国(US)的销售区域及其订单数量",
+        "gold_sql": "SELECT t.Name, COUNT(o.SalesOrderID) AS OrderCount FROM salesterritory t LEFT JOIN salesorderheader o ON t.TerritoryID = o.TerritoryID WHERE t.CountryRegionCode = 'US' GROUP BY t.TerritoryID, t.Name",
+        "expected_result_type": "table",
+        "tags": [
+            "join",
+            "where",
+            "group_by"
+        ],
+        "description": "Medium - JOIN+过滤+聚合"
+    },
+    {
+        "id": "aw012",
+        "difficulty": "medium",
+        "question": "查询零售价大于1000的产品及其类别",
+        "gold_sql": "SELECT p.Name AS ProductName, pc.Name AS CategoryName, p.ListPrice FROM product p JOIN productsubcategory ps ON p.ProductSubcategoryID = ps.ProductSubcategoryID JOIN productcategory pc ON ps.ProductCategoryID = pc.ProductCategoryID WHERE p.ListPrice > 1000",
+        "expected_result_type": "table",
+        "tags": [
+            "join",
+            "where"
+        ],
+        "description": "Medium - 多表JOIN+过滤"
+    },
+    {
+        "id": "aw013",
+        "difficulty": "medium",
+        "question": "查询产品颜色为红色(Red)的产品数量和平均价格",
+        "gold_sql": "SELECT Color, COUNT(*) AS ProductCount, AVG(ListPrice) AS AvgPrice FROM product WHERE Color = 'Red' GROUP BY Color",
+        "expected_result_type": "table",
+        "tags": [
+            "where",
+            "group_by",
+            "aggregate"
+        ],
+        "description": "Medium - 过滤+聚合"
+    },
+    {
+        "id": "aw014",
+        "difficulty": "medium",
+        "question": "查询安全库存大于500的产品及其库存位置",
+        "gold_sql": "SELECT p.Name, p.SafetyStockLevel, l.Name AS LocationName FROM product p JOIN productinventory pi ON p.ProductID = pi.ProductID JOIN location l ON pi.LocationID = l.LocationID WHERE p.SafetyStockLevel > 500",
+        "expected_result_type": "table",
+        "tags": [
+            "join",
+            "where"
+        ],
+        "description": "Medium - 多表JOIN+过滤"
+    },
+    {
+        "id": "aw015",
+        "difficulty": "medium",
+        "question": "查询所有销售区域的名称、分组及订单总额",
+        "gold_sql": "SELECT t.Name, t.`Group`, SUM(o.TotalDue) AS TotalSales FROM salesterritory t JOIN salesorderheader o ON t.TerritoryID = o.TerritoryID GROUP BY t.TerritoryID, t.Name, t.`Group`",
+        "expected_result_type": "table",
+        "tags": [
+            "join",
+            "group_by",
+            "sum"
+        ],
+        "description": "Medium - JOIN+聚合"
+    },
+    {
+        "id": "aw016",
+        "difficulty": "medium",
+        "question": "查询每个产品类别下有多少个产品",
+        "gold_sql": "SELECT pc.Name AS CategoryName, COUNT(p.ProductID) AS ProductCount FROM productcategory pc JOIN productsubcategory ps ON pc.ProductCategoryID = ps.ProductCategoryID JOIN product p ON ps.ProductSubcategoryID = p.ProductSubcategoryID GROUP BY pc.ProductCategoryID, pc.Name",
+        "expected_result_type": "table",
+        "tags": [
+            "join",
+            "group_by",
+            "count"
+        ],
+        "description": "Medium - 多表JOIN+聚合"
+    },
+    {
+        "id": "aw017",
+        "difficulty": "medium",
+        "question": "查询每个销售区域的订单数量",
+        "gold_sql": "SELECT t.Name AS Territory, COUNT(o.SalesOrderID) AS OrderCount FROM salesterritory t JOIN salesorderheader o ON t.TerritoryID = o.TerritoryID GROUP BY t.TerritoryID, t.Name ORDER BY OrderCount DESC",
+        "expected_result_type": "table",
+        "tags": [
+            "join",
+            "group_by",
+            "count"
+        ],
+        "description": "Medium - 区域订单统计"
+    },
+    {
+        "id": "aw018",
+        "difficulty": "medium",
+        "question": "查询销售额最高的10个产品",
+        "gold_sql": "SELECT p.Name AS ProductName, SUM(od.LineTotal) AS TotalSales FROM product p JOIN salesorderdetail od ON p.ProductID = od.ProductID GROUP BY p.ProductID, p.Name ORDER BY TotalSales DESC LIMIT 10",
+        "expected_result_type": "table",
+        "tags": [
+            "join",
+            "group_by",
+            "order_by",
+            "limit"
+        ],
+        "description": "Medium - 产品销售排名"
+    },
+    {
+        "id": "aw019",
+        "difficulty": "medium",
+        "question": "查询有采购订单的供应商及其订单数量",
+        "gold_sql": "SELECT v.Name AS VendorName, COUNT(po.PurchaseOrderID) AS OrderCount FROM vendor v JOIN purchaseorderheader po ON v.VendorID = po.VendorID GROUP BY v.VendorID, v.Name ORDER BY OrderCount DESC",
+        "expected_result_type": "table",
+        "tags": [
+            "join",
+            "group_by",
+            "count"
+        ],
+        "description": "Medium - 供应商订单统计"
+    },
+    {
+        "id": "aw020",
+        "difficulty": "medium",
+        "question": "查询每个部门的员工数量",
+        "gold_sql": "SELECT d.Name AS DepartmentName, COUNT(edh.EmployeeID) AS EmployeeCount FROM department d JOIN employeedepartmenthistory edh ON d.DepartmentID = edh.DepartmentID WHERE edh.EndDate IS NULL GROUP BY d.DepartmentID, d.Name ORDER BY EmployeeCount DESC",
+        "expected_result_type": "table",
+        "tags": [
+            "join",
+            "group_by",
+            "where"
+        ],
+        "description": "Medium - 部门员工统计"
+    },
+    {
+        "id": "aw021",
+        "difficulty": "medium",
+        "question": "查询产品及其所属类别名称",
+        "gold_sql": "SELECT p.Name AS ProductName, pc.Name AS CategoryName FROM product p JOIN productsubcategory ps ON p.ProductSubcategoryID = ps.ProductSubcategoryID JOIN productcategory pc ON ps.ProductCategoryID = pc.ProductCategoryID",
+        "expected_result_type": "table",
+        "tags": [
+            "join"
+        ],
+        "description": "Medium - 多表JOIN"
+    },
+    {
+        "id": "aw022",
+        "difficulty": "medium",
+        "question": "查询每个客户的订单总金额(前10名)",
+        "gold_sql": "SELECT c.CustomerID, SUM(o.TotalDue) AS TotalAmount FROM customer c JOIN salesorderheader o ON c.CustomerID = o.CustomerID GROUP BY c.CustomerID ORDER BY TotalAmount DESC LIMIT 10",
+        "expected_result_type": "table",
+        "tags": [
+            "join",
+            "group_by",
+            "sum"
+        ],
+        "description": "Medium - 客户消费统计"
+    },
+    {
+        "id": "aw023",
+        "difficulty": "medium",
+        "question": "查询库存数量低于再订购点的产品",
+        "gold_sql": "SELECT p.Name, pi.Quantity AS CurrentStock, p.ReorderPoint FROM product p JOIN productinventory pi ON p.ProductID = pi.ProductID WHERE pi.Quantity < p.ReorderPoint",
+        "expected_result_type": "table",
+        "tags": [
+            "join",
+            "where",
+            "comparison"
+        ],
+        "description": "Medium - 库存预警"
+    },
+    {
+        "id": "aw024",
+        "difficulty": "hard",
+        "question": "查询每种颜色的产品数量，并找出产品数量最多的颜色",
+        "gold_sql": "SELECT Color, COUNT(*) AS ProductCount FROM product WHERE Color IS NOT NULL GROUP BY Color HAVING COUNT(*) = (SELECT MAX(cnt) FROM (SELECT COUNT(*) AS cnt FROM product WHERE Color IS NOT NULL GROUP BY Color) AS t)",
+        "expected_result_type": "table",
+        "tags": [
+            "group_by",
+            "having",
+            "subquery"
+        ],
+        "description": "Hard - 子查询+HAVING"
+    },
+    {
+        "id": "aw025",
+        "difficulty": "medium",
+        "question": "查询有产品的子类别及其平均零售价",
+        "gold_sql": "SELECT ps.Name AS SubCategory, AVG(p.ListPrice) AS AvgPrice FROM productsubcategory ps JOIN product p ON ps.ProductSubcategoryID = p.ProductSubcategoryID GROUP BY ps.ProductSubcategoryID, ps.Name ORDER BY AvgPrice DESC",
+        "expected_result_type": "table",
+        "tags": [
+            "join",
+            "group_by",
+            "avg"
+        ],
+        "description": "Medium - 均价分析"
+    },
+    {
+        "id": "aw026",
+        "difficulty": "medium",
+        "question": "查询2013年的销售订单数量",
+        "gold_sql": "SELECT COUNT(*) AS OrderCount FROM salesorderheader WHERE YEAR(OrderDate) = 2013",
+        "expected_result_type": "single_value",
+        "tags": [
+            "where",
+            "date_function"
+        ],
+        "description": "Medium - 日期过滤"
+    },
+    {
+        "id": "aw027",
+        "difficulty": "medium",
+        "question": "查询每个发货方式的使用次数",
+        "gold_sql": "SELECT sm.Name AS ShipMethod, COUNT(po.PurchaseOrderID) AS UsageCount FROM shipmethod sm JOIN purchaseorderheader po ON sm.ShipMethodID = po.ShipMethodID GROUP BY sm.ShipMethodID, sm.Name",
+        "expected_result_type": "table",
+        "tags": [
+            "join",
+            "group_by"
+        ],
+        "description": "Medium - 发货统计"
+    },
+    {
+        "id": "aw028",
+        "difficulty": "hard",
+        "question": "查询利润率高于平均利润率的产品",
+        "gold_sql": "SELECT Name, StandardCost, ListPrice, (ListPrice - StandardCost) / ListPrice * 100 AS ProfitMarginPct FROM product WHERE ListPrice > 0 AND (ListPrice - StandardCost) / ListPrice > (SELECT AVG((ListPrice - StandardCost) / ListPrice) FROM product WHERE ListPrice > 0) ORDER BY ProfitMarginPct DESC LIMIT 20",
+        "expected_result_type": "table",
+        "tags": [
+            "calculation",
+            "subquery",
+            "order_by"
+        ],
+        "description": "Hard - 利润分析+子查询"
+    },
+    {
+        "id": "aw029",
+        "difficulty": "hard",
+        "question": "查询每年在线订单和非在线订单的数量和金额对比(返回年份、订单类型、数量、金额)",
+        "gold_sql": "SELECT YEAR(OrderDate) AS Year, OnlineOrderFlag, COUNT(*) AS OrderCount, SUM(TotalDue) AS TotalAmount FROM salesorderheader GROUP BY YEAR(OrderDate), OnlineOrderFlag ORDER BY Year, OnlineOrderFlag",
+        "expected_result_type": "table",
+        "tags": [
+            "group_by",
+            "date_function"
+        ],
+        "description": "Hard - 多维度分组"
+    },
+    {
+        "id": "aw030",
+        "difficulty": "medium",
+        "question": "查询每个国家的客户订单总额(返回国家代码如US/CA/AU)",
+        "gold_sql": "SELECT t.CountryRegionCode, SUM(o.TotalDue) AS TotalAmount FROM salesterritory t JOIN salesorderheader o ON t.TerritoryID = o.TerritoryID GROUP BY t.CountryRegionCode ORDER BY TotalAmount DESC",
+        "expected_result_type": "table",
+        "tags": [
+            "join",
+            "group_by",
+            "sum"
+        ],
+        "description": "Medium - 国家销售分析"
+    },
+    {
+        "id": "aw031",
+        "difficulty": "medium",
+        "question": "查询有产品的型号及其产品数量",
+        "gold_sql": "SELECT pm.Name AS ModelName, COUNT(p.ProductID) AS ProductCount FROM productmodel pm JOIN product p ON pm.ProductModelID = p.ProductModelID GROUP BY pm.ProductModelID, pm.Name ORDER BY ProductCount DESC",
+        "expected_result_type": "table",
+        "tags": [
+            "join",
+            "group_by"
+        ],
+        "description": "Medium - 型号统计"
+    },
+    {
+        "id": "aw032",
+        "difficulty": "medium",
+        "question": "查询有产品评论的产品名称和评分",
+        "gold_sql": "SELECT p.Name AS ProductName, pr.Rating FROM product p JOIN productreview pr ON p.ProductID = pr.ProductID",
+        "expected_result_type": "table",
+        "tags": [
+            "join"
+        ],
+        "description": "Medium - 产品评论"
+    },
+    {
+        "id": "aw033",
+        "difficulty": "medium",
+        "question": "查询采购金额最高的5个供应商",
+        "gold_sql": "SELECT v.Name AS VendorName, SUM(po.TotalDue) AS TotalAmount FROM vendor v JOIN purchaseorderheader po ON v.VendorID = po.VendorID GROUP BY v.VendorID, v.Name ORDER BY TotalAmount DESC LIMIT 5",
+        "expected_result_type": "table",
+        "tags": [
+            "join",
+            "group_by",
+            "limit"
+        ],
+        "description": "Medium - 采购分析"
+    },
+    {
+        "id": "aw034",
+        "difficulty": "medium",
+        "question": "查询产品的平均库存数量按库位分组",
+        "gold_sql": "SELECT l.Name AS LocationName, AVG(pi.Quantity) AS AvgStock FROM location l JOIN productinventory pi ON l.LocationID = pi.LocationID GROUP BY l.LocationID, l.Name",
+        "expected_result_type": "table",
+        "tags": [
+            "join",
+            "group_by",
+            "avg"
+        ],
+        "description": "Medium - 库位库存"
+    },
+    {
+        "id": "aw035",
+        "difficulty": "medium",
+        "question": "查询每个班次的员工数量",
+        "gold_sql": "SELECT s.Name AS ShiftName, COUNT(DISTINCT edh.EmployeeID) AS EmployeeCount FROM shift s JOIN employeedepartmenthistory edh ON s.ShiftID = edh.ShiftID WHERE edh.EndDate IS NULL GROUP BY s.ShiftID, s.Name",
+        "expected_result_type": "table",
+        "tags": [
+            "join",
+            "group_by",
+            "distinct"
+        ],
+        "description": "Medium - 班次统计"
+    },
+    {
+        "id": "aw036",
+        "difficulty": "hard",
+        "question": "查询每个销售人员的销售总额和订单数量",
+        "gold_sql": "SELECT sp.SalesPersonID, COUNT(o.SalesOrderID) AS OrderCount, SUM(o.TotalDue) AS TotalSales FROM salesperson sp JOIN salesorderheader o ON sp.SalesPersonID = o.SalesPersonID GROUP BY sp.SalesPersonID ORDER BY TotalSales DESC",
+        "expected_result_type": "table",
+        "tags": [
+            "join",
+            "group_by",
+            "multiple_tables"
+        ],
+        "description": "Hard - 销售人员业绩"
+    },
+    {
+        "id": "aw037",
+        "difficulty": "hard",
+        "question": "查询购买过自行车(Bikes)类产品的客户数量",
+        "gold_sql": "SELECT COUNT(DISTINCT o.CustomerID) AS CustomerCount FROM salesorderheader o JOIN salesorderdetail od ON o.SalesOrderID = od.SalesOrderID JOIN product p ON od.ProductID = p.ProductID JOIN productsubcategory ps ON p.ProductSubcategoryID = ps.ProductSubcategoryID JOIN productcategory pc ON ps.ProductCategoryID = pc.ProductCategoryID WHERE pc.Name = 'Bikes'",
+        "expected_result_type": "single_value",
+        "tags": [
+            "join",
+            "distinct",
+            "multiple_tables"
+        ],
+        "description": "Hard - 多表关联"
+    },
+    {
+        "id": "aw038",
+        "difficulty": "hard",
+        "question": "查询没有销售记录的产品",
+        "gold_sql": "SELECT p.Name FROM product p LEFT JOIN salesorderdetail od ON p.ProductID = od.ProductID WHERE od.ProductID IS NULL",
+        "expected_result_type": "table",
+        "tags": [
+            "left_join",
+            "null_check"
+        ],
+        "description": "Hard - LEFT JOIN"
+    },
+    {
+        "id": "aw039",
+        "difficulty": "hard",
+        "question": "查询供应超过5种产品的供应商",
+        "gold_sql": "SELECT v.Name AS VendorName, COUNT(DISTINCT pv.ProductID) AS ProductCount FROM vendor v JOIN productvendor pv ON v.VendorID = pv.VendorID GROUP BY v.VendorID, v.Name HAVING COUNT(DISTINCT pv.ProductID) > 5 ORDER BY ProductCount DESC",
+        "expected_result_type": "table",
+        "tags": [
+            "join",
+            "group_by",
+            "having"
+        ],
+        "description": "Hard - HAVING过滤"
+    },
+    {
+        "id": "aw040",
+        "difficulty": "hard",
+        "question": "查询每月的销售趋势",
+        "gold_sql": "SELECT YEAR(OrderDate) AS Year, MONTH(OrderDate) AS Month, SUM(TotalDue) AS MonthlySales, COUNT(*) AS OrderCount FROM salesorderheader GROUP BY YEAR(OrderDate), MONTH(OrderDate) ORDER BY Year, Month",
+        "expected_result_type": "table",
+        "tags": [
+            "group_by",
+            "date_function"
+        ],
+        "description": "Hard - 时间序列分析"
+    },
+    {
+        "id": "aw041",
+        "difficulty": "hard",
+        "question": "查询订单金额高于平均值的订单",
+        "gold_sql": "SELECT SalesOrderID, TotalDue FROM salesorderheader WHERE TotalDue > (SELECT AVG(TotalDue) FROM salesorderheader) ORDER BY TotalDue DESC",
+        "expected_result_type": "table",
+        "tags": [
+            "subquery"
+        ],
+        "description": "Hard - 子查询"
+    },
+    {
+        "id": "aw042",
+        "difficulty": "hard",
+        "question": "查询产品利润率最高的类别",
+        "gold_sql": "SELECT pc.Name AS Category, AVG((p.ListPrice - p.StandardCost) / p.ListPrice * 100) AS AvgProfitMargin FROM productcategory pc JOIN productsubcategory ps ON pc.ProductCategoryID = ps.ProductCategoryID JOIN product p ON ps.ProductSubcategoryID = p.ProductSubcategoryID WHERE p.ListPrice > 0 GROUP BY pc.ProductCategoryID, pc.Name ORDER BY AvgProfitMargin DESC",
+        "expected_result_type": "table",
+        "tags": [
+            "join",
+            "calculation",
+            "group_by"
+        ],
+        "description": "Hard - 利润分析"
+    },
+    {
+        "id": "aw043",
+        "difficulty": "hard",
+        "question": "查询每个区域的年度销售额",
+        "gold_sql": "SELECT t.Name AS Territory, YEAR(o.OrderDate) AS Year, SUM(o.TotalDue) AS YearlySales FROM salesterritory t JOIN salesorderheader o ON t.TerritoryID = o.TerritoryID GROUP BY t.TerritoryID, t.Name, YEAR(o.OrderDate) ORDER BY t.Name, Year",
+        "expected_result_type": "table",
+        "tags": [
+            "join",
+            "group_by",
+            "date_function"
+        ],
+        "description": "Hard - 年度分析"
+    },
+    {
+        "id": "aw044",
+        "difficulty": "hard",
+        "question": "查询每年生产工单的完成情况统计(按年分组，返回总订单数和完成订单数)",
+        "gold_sql": "SELECT YEAR(StartDate) AS Year, COUNT(*) AS TotalOrders, SUM(CASE WHEN StockedQty >= OrderQty THEN 1 ELSE 0 END) AS CompletedOrders FROM workorder GROUP BY YEAR(StartDate) ORDER BY Year",
+        "expected_result_type": "table",
+        "tags": [
+            "case_when",
+            "group_by"
+        ],
+        "description": "Hard - CASE表达式"
+    },
+    {
+        "id": "aw045",
+        "difficulty": "hard",
+        "question": "查询订单最多的前10个州/省",
+        "gold_sql": "SELECT sp.Name AS StateProvince, COUNT(o.SalesOrderID) AS OrderCount FROM stateprovince sp JOIN address a ON sp.StateProvinceID = a.StateProvinceID JOIN salesorderheader o ON a.AddressID = o.ShipToAddressID GROUP BY sp.StateProvinceID, sp.Name ORDER BY OrderCount DESC LIMIT 10",
+        "expected_result_type": "table",
+        "tags": [
+            "join",
+            "group_by",
+            "limit"
+        ],
+        "description": "Hard - 地理分析"
+    },
+    {
+        "id": "aw046",
+        "difficulty": "extra_hard",
+        "question": "计算每个产品类别的销售总额和占比(占比保留6位小数，不使用ROUND)",
+        "gold_sql": "SELECT pc.Name AS Category, SUM(od.LineTotal) AS Sales, SUM(od.LineTotal) / (SELECT SUM(LineTotal) FROM salesorderdetail) * 100 AS Percentage FROM productcategory pc JOIN productsubcategory ps ON pc.ProductCategoryID = ps.ProductCategoryID JOIN product p ON ps.ProductSubcategoryID = p.ProductSubcategoryID JOIN salesorderdetail od ON p.ProductID = od.ProductID GROUP BY pc.ProductCategoryID, pc.Name ORDER BY Percentage DESC",
+        "expected_result_type": "table",
+        "tags": [
+            "join",
+            "subquery",
+            "calculation"
+        ],
+        "description": "Extra-Hard - 占比计算(简化版)"
+    },
+    {
+        "id": "aw047",
+        "difficulty": "extra_hard",
+        "question": "查询各产品类别下每个产品的销售额排名列表(返回类别名、产品名、销售额)",
+        "gold_sql": "SELECT * FROM (SELECT pc.Name AS Category, p.Name AS Product, SUM(od.LineTotal) AS Sales FROM productcategory pc JOIN productsubcategory ps ON pc.ProductCategoryID = ps.ProductCategoryID JOIN product p ON ps.ProductSubcategoryID = p.ProductSubcategoryID JOIN salesorderdetail od ON p.ProductID = od.ProductID GROUP BY pc.ProductCategoryID, pc.Name, p.ProductID, p.Name ORDER BY pc.Name, Sales DESC) AS ranked",
+        "expected_result_type": "table",
+        "tags": [
+            "join",
+            "group_by",
+            "order_by",
+            "subquery"
+        ],
+        "description": "Extra-Hard - 分类产品销售排名"
+    },
+    {
+        "id": "aw048",
+        "difficulty": "hard",
+        "question": "计算订单数>=5的客户的订单数和总消费金额(按总消费降序取前20名)",
+        "gold_sql": "SELECT CustomerID, COUNT(SalesOrderID) AS OrderCount, SUM(TotalDue) AS TotalSpent, AVG(TotalDue) AS AvgOrderValue FROM salesorderheader GROUP BY CustomerID HAVING COUNT(SalesOrderID) >= 5 ORDER BY TotalSpent DESC LIMIT 20",
+        "expected_result_type": "table",
+        "tags": [
+            "group_by",
+            "having",
+            "aggregate"
+        ],
+        "description": "Hard - 客户价值分析"
+    },
+    {
+        "id": "aw049",
+        "difficulty": "extra_hard",
+        "question": "查询各月各销售区域的销售额(年和月分开为两列，按年月销售额降序)",
+        "gold_sql": "SELECT YEAR(o.OrderDate) AS Year, MONTH(o.OrderDate) AS Month, t.Name AS Territory, SUM(o.TotalDue) AS MonthlySales FROM salesorderheader o JOIN salesterritory t ON o.TerritoryID = t.TerritoryID GROUP BY YEAR(o.OrderDate), MONTH(o.OrderDate), t.TerritoryID, t.Name ORDER BY Year, Month, MonthlySales DESC",
+        "expected_result_type": "table",
+        "tags": [
+            "join",
+            "group_by",
+            "date_function"
+        ],
+        "description": "Extra-Hard - 月度区域销售排名"
+    },
+    {
+        "id": "aw050",
+        "difficulty": "extra_hard",
+        "question": "查询每个类别中价格最高的产品(如有并列价格的产品全部返回)",
+        "gold_sql": "SELECT pc.Name AS Category, p.Name AS Product, p.ListPrice FROM productcategory pc JOIN productsubcategory ps ON pc.ProductCategoryID = ps.ProductCategoryID JOIN product p ON ps.ProductSubcategoryID = p.ProductSubcategoryID WHERE p.ListPrice = (SELECT MAX(p2.ListPrice) FROM product p2 JOIN productsubcategory ps2 ON p2.ProductSubcategoryID = ps2.ProductSubcategoryID WHERE ps2.ProductCategoryID = pc.ProductCategoryID) ORDER BY pc.Name",
+        "expected_result_type": "table",
+        "tags": [
+            "join",
+            "subquery",
+            "max"
+        ],
+        "description": "Extra-Hard - 类别最高价产品(简化版)"
+    }
+]
