@@ -858,7 +858,7 @@ class EnhancedPromptBuilder:
     
     @property
     def manager(self) -> PromptTemplateManager:
-        """兼容性属性：返回template_manager，供agent_core.py使用"""
+        """Compatibility property: returns the PromptTemplateManager instance."""
         return self.template_manager
     
     def _detect_llm_provider(self, config: Dict[str, Any]) -> LLMProvider:

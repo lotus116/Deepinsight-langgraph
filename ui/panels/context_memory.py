@@ -206,64 +206,62 @@ def _render_config_section():
 
 def _render_advanced_settings():
     """渲染高级设置区域"""
-    with st.expander("⚡ 高级设置", expanded=False):
-        # 自动清理选项
-        auto_clean = st.checkbox(
-            "自动清理过期记忆",
-            value=st.session_state.get('context_auto_clean', True),
-            help="自动清理超过24小时的旧记忆，保持系统性能",
-            key="auto_clean_checkbox"
-        )
-        if auto_clean != st.session_state.get('context_auto_clean', True):
-            st.session_state.context_auto_clean = auto_clean
-            try:
-                context_integration = _get_context_integration()
-                context_integration._save_memory_settings()
-                if auto_clean:
-                    context_integration.auto_cleanup_expired_memory()
-                    st.success("✅ 已启用自动清理并执行了一次清理")
-            except Exception as e:
-                st.error(f"设置自动清理失败: {e}")
-        
-        # 记忆持久化选项
-        persist_memory = st.checkbox(
-            "持久化记忆到磁盘",
-            value=st.session_state.get('context_persist_memory', False),
-            help="将对话记忆保存到本地文件",
-            key="persist_memory_checkbox"
-        )
-        if persist_memory != st.session_state.get('context_persist_memory', False):
-            st.session_state.context_persist_memory = persist_memory
-            try:
-                context_integration = _get_context_integration()
-                context_integration._save_memory_settings()
-                if persist_memory:
-                    st.info("💾 记忆持久化已启用")
-                else:
-                    st.info("⚠️ 注意：禁用持久化不会删除已保存的数据")
-            except Exception as e:
-                st.error(f"设置持久化失败: {e}")
-        
-        # 隐私模式
-        privacy_mode = st.checkbox(
-            "隐私模式（不保存敏感信息）",
-            value=st.session_state.get('context_privacy_mode', False),
-            help="启用后，系统会自动过滤敏感信息",
-            key="privacy_mode_checkbox"
-        )
-        if privacy_mode != st.session_state.get('context_privacy_mode', False):
-            st.session_state.context_privacy_mode = privacy_mode
-            try:
-                context_integration = _get_context_integration()
-                context_integration._save_memory_settings()
-                if privacy_mode:
-                    st.success("🔒 隐私模式已启用")
-                else:
-                    st.info("🔓 隐私模式已禁用")
-            except Exception as e:
-                st.error(f"设置隐私模式失败: {e}")
-    
-    st.markdown('</div>', unsafe_allow_html=True)
+    st.markdown("**⚡ 高级设置**")
+    # 自动清理选项
+    auto_clean = st.checkbox(
+        "自动清理过期记忆",
+        value=st.session_state.get('context_auto_clean', True),
+        help="自动清理超过24小时的旧记忆，保持系统性能",
+        key="auto_clean_checkbox"
+    )
+    if auto_clean != st.session_state.get('context_auto_clean', True):
+        st.session_state.context_auto_clean = auto_clean
+        try:
+            context_integration = _get_context_integration()
+            context_integration._save_memory_settings()
+            if auto_clean:
+                context_integration.auto_cleanup_expired_memory()
+                st.success("✅ 已启用自动清理并执行了一次清理")
+        except Exception as e:
+            st.error(f"设置自动清理失败: {e}")
+
+    # 记忆持久化选项
+    persist_memory = st.checkbox(
+        "持久化记忆到磁盘",
+        value=st.session_state.get('context_persist_memory', False),
+        help="将对话记忆保存到本地文件",
+        key="persist_memory_checkbox"
+    )
+    if persist_memory != st.session_state.get('context_persist_memory', False):
+        st.session_state.context_persist_memory = persist_memory
+        try:
+            context_integration = _get_context_integration()
+            context_integration._save_memory_settings()
+            if persist_memory:
+                st.info("💾 记忆持久化已启用")
+            else:
+                st.info("⚠️ 注意：禁用持久化不会删除已保存的数据")
+        except Exception as e:
+            st.error(f"设置持久化失败: {e}")
+
+    # 隐私模式
+    privacy_mode = st.checkbox(
+        "隐私模式（不保存敏感信息）",
+        value=st.session_state.get('context_privacy_mode', False),
+        help="启用后，系统会自动过滤敏感信息",
+        key="privacy_mode_checkbox"
+    )
+    if privacy_mode != st.session_state.get('context_privacy_mode', False):
+        st.session_state.context_privacy_mode = privacy_mode
+        try:
+            context_integration = _get_context_integration()
+            context_integration._save_memory_settings()
+            if privacy_mode:
+                st.success("🔒 隐私模式已启用")
+            else:
+                st.info("🔓 隐私模式已禁用")
+        except Exception as e:
+            st.error(f"设置隐私模式失败: {e}")
 
 
 def _render_statistics_section():

@@ -1,7 +1,8 @@
-"""Factory for the opt-in graph-native Text2SQL path."""
+"""Factory for the graph-native Text2SQL path."""
 
 from __future__ import annotations
 
+import threading
 from typing import Any, Dict, Iterable, Optional
 
 from openai import OpenAI
@@ -19,44 +20,63 @@ def create_openai_client(api_key: str, base_url: str, timeout: float = 60.0) -> 
     clean_url = base_url.strip().rstrip("/")
     if not clean_url.endswith("/v1"):
         clean_url += "/v1"
-    return OpenAI(api_key=api_key, base_url=clean_url, timeout=timeout, max_retries=0)
+    return OpenAI(api_key=api_key, base_url=clean_url, timeout=timeout, max_retries=1)
 
 
 class Text2SQLGraphService:
+    _rag_lock = threading.Lock()
+    _shared_rag = None
+    _shared_rag_refcount = 0
+
     def __init__(self, settings: DeepInsightSettings):
         self.settings = settings
         self._runner: Optional[Text2SQLGraphRunner] = None
+        self._lock = threading.Lock()
 
     @property
     def runner(self) -> Text2SQLGraphRunner:
         if self._runner is None:
-            self._runner = self._build_runner()
+            with self._lock:
+                if self._runner is None:
+                    self._runner = self._build_runner()
         return self._runner
 
-    def _build_runner(self) -> Text2SQLGraphRunner:
-        from rag_engine import IntelRAG
+    def _get_or_create_rag(self):
+        with self._rag_lock:
+            if self._shared_rag is None:
+                from rag_engine import IntelRAG
 
-        rag = IntelRAG(
-            model_path=self.settings.model_path,
-            db_uris=self.settings.db_uris,
-            kb_paths=self.settings.kb_paths,
-        )
-        if self.settings.use_chroma_rag:
-            store = ChromaKnowledgeStore(
-                persist_path=self.settings.chroma_path,
-                collection_name=f"{self.settings.chroma_collection_prefix}_graph_rag",
-            )
-            ChromaRAGBridge(
-                store=store,
-                namespace=f"{self.settings.chroma_collection_prefix}:graph",
-                source="graph_intel_rag",
-            ).attach(rag)
+                rag = IntelRAG(
+                    model_path=self.settings.model_path,
+                    db_uris=self.settings.db_uris,
+                    kb_paths=self.settings.kb_paths,
+                )
+                if self.settings.use_chroma_rag:
+                    store = ChromaKnowledgeStore(
+                        persist_path=self.settings.chroma_path,
+                        collection_name=f"{self.settings.chroma_collection_prefix}_rag",
+                    )
+                    inserted = ChromaRAGBridge(
+                        store=store,
+                        namespace=self.settings.chroma_collection_prefix,
+                        source="graph_intel_rag",
+                    ).attach(rag)
+                    if inserted > 0:
+                        print(f"[Chroma] Attached {inserted} documents to collection "
+                              f"'{self.settings.chroma_collection_prefix}_rag'")
+                self._shared_rag = rag
+            return self._shared_rag
+
+    def _build_runner(self) -> Text2SQLGraphRunner:
+        rag = self._get_or_create_rag()
 
         llm_client = create_openai_client(
             api_key=self.settings.api_key,
             base_url=self.settings.api_base,
             timeout=float(self.settings.raw.get("llm_timeout", 45.0)),
         )
+        print(f"[DeepInsight] Using DB URI: {self.settings.first_db_uri!r}")
+        print(f"[DeepInsight] All DB URIs: {self.settings.db_uris!r}")
         db_engine = create_engine(self.settings.first_db_uri) if self.settings.first_db_uri else None
         return Text2SQLGraphRunner(
             rag_adapter=LegacyRAGAdapter(rag),

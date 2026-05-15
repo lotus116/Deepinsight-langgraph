@@ -7,7 +7,6 @@ from sqlalchemy import create_engine, text
 from deepinsight_api.main import create_app
 from deepinsight_core.config import DeepInsightSettings
 from deepinsight_core.graph.events import token_usage_zero_event
-from deepinsight_core.graph.builder import iter_legacy_events, run_legacy_graph
 from deepinsight_core.graph.generation_runner import SQLGenerationGraphRunner
 from deepinsight_core.graph.nodes import (
     classify_sql_error,
@@ -35,12 +34,6 @@ from deepinsight_core.services.sql_generation_service import SQLGenerationServic
 from deepinsight_core.services.sql_service import SQLService
 from deepinsight_core.services.text2sql_graph_service import Text2SQLGraphService
 from utils import apply_env_overrides, load_config, save_config
-
-
-class FakeAgentService:
-    def stream_query(self, query, history_context=None, cache_query_key=None):
-        yield {"type": "step", "msg": f"handling {query}", "status": "running"}
-        yield {"type": "result", "sql": "SELECT 1", "df": pd.DataFrame([{"answer": 1}]), "from_cache": False}
 
 
 class FakeGraphService:
@@ -199,29 +192,17 @@ def fake_embedding(text):
 class RefactorFoundationTests(unittest.TestCase):
     def test_legacy_config_defaults_include_backend_switches(self):
         config = load_config()
-
-        self.assertIn(config.get("agent_backend"), {"legacy", "graph"})
-        self.assertIn("enable_graph_query_path", config)
         self.assertIn("use_chroma_rag", config)
         self.assertIn(config.get("query_runtime"), {"api", "auto", "local"})
         self.assertIn("api_server_url", config)
 
     def test_env_overrides_can_enable_graph_backend(self):
-        old_backend = os.environ.get("DEEPINSIGHT_AGENT_BACKEND")
         old_chroma = os.environ.get("DEEPINSIGHT_USE_CHROMA_RAG")
         try:
-            os.environ["DEEPINSIGHT_AGENT_BACKEND"] = "graph"
             os.environ["DEEPINSIGHT_USE_CHROMA_RAG"] = "true"
-            config = apply_env_overrides({"agent_backend": "legacy", "enable_graph_query_path": False})
-
-            self.assertEqual(config["agent_backend"], "graph")
-            self.assertTrue(config["enable_graph_query_path"])
+            config = apply_env_overrides({"use_chroma_rag": False})
             self.assertTrue(config["use_chroma_rag"])
         finally:
-            if old_backend is None:
-                os.environ.pop("DEEPINSIGHT_AGENT_BACKEND", None)
-            else:
-                os.environ["DEEPINSIGHT_AGENT_BACKEND"] = old_backend
             if old_chroma is None:
                 os.environ.pop("DEEPINSIGHT_USE_CHROMA_RAG", None)
             else:
@@ -234,7 +215,6 @@ class RefactorFoundationTests(unittest.TestCase):
             os.environ["DEEPINSIGHT_QUERY_RUNTIME"] = "api"
             os.environ["DEEPINSIGHT_API_SERVER_URL"] = "http://localhost:9000"
             config = apply_env_overrides({})
-
             self.assertEqual(config["query_runtime"], "api")
             self.assertEqual(config["api_server_url"], "http://localhost:9000")
         finally:
@@ -287,7 +267,6 @@ class RefactorFoundationTests(unittest.TestCase):
                 "max_retries": "2",
             }
         )
-
         self.assertEqual(settings.api_key, "k")
         self.assertEqual(settings.api_base, "https://example.com")
         self.assertEqual(settings.first_db_uri, "sqlite:///example.db")
@@ -318,14 +297,12 @@ class RefactorFoundationTests(unittest.TestCase):
     def test_retrieved_context_round_trip(self):
         payload = {"database_index": ["orders"], "core_tables": ["orders"], "metrics": {"latency": 1}}
         context = RetrievedContext.from_mapping(payload)
-
         self.assertEqual(context.database_index, ["orders"])
         self.assertEqual(context.core_tables, ["orders"])
         self.assertEqual(context.to_legacy_dict()["metrics"], {"latency": 1})
 
     def test_chroma_metadata_inference_for_table_document(self):
         metadata = infer_document_metadata("【表名】orders\n【描述】订单主表", position=3)
-
         self.assertEqual(metadata["doc_type"], "table_schema")
         self.assertEqual(metadata["table_name"], "orders")
         self.assertEqual(metadata["position"], 3)
@@ -376,16 +353,21 @@ class RefactorFoundationTests(unittest.TestCase):
         self.assertEqual(payload["core_tables"], ["orders"])
         self.assertEqual(payload["rough_candidates"][0]["table_name"], "orders")
 
-    def test_legacy_graph_fallback_collects_result(self):
-        state = run_legacy_graph(FakeAgentService(), {"query": "hello", "history_context": []})
+    def test_chroma_bridge_guards_against_duplicate_attach(self):
+        import chromadb
 
-        self.assertEqual(state["error"], "")
-        self.assertEqual(state["result"]["rows"], [{"answer": 1}])
-        self.assertEqual(len(state["events"]), 2)
+        legacy_rag = FakeLegacyRAG()
+        store = ChromaKnowledgeStore(
+            persist_path=None,
+            collection_name="test_deepinsight_bridge_dup",
+            client=chromadb.EphemeralClient(),
+        )
+        bridge = ChromaRAGBridge(store, namespace="dup")
+        first = bridge.attach(legacy_rag)
+        second = bridge.attach(legacy_rag)
 
-    def test_iter_legacy_events_streams(self):
-        events = list(iter_legacy_events(FakeAgentService(), {"query": "hello"}))
-        self.assertEqual([event["type"] for event in events], ["step", "result"])
+        self.assertEqual(first, 2)
+        self.assertEqual(second, 2)  # returns existing count, doesn't re-insert
 
     def test_token_usage_zero_event_keeps_legacy_shape(self):
         event = token_usage_zero_event()
@@ -395,7 +377,6 @@ class RefactorFoundationTests(unittest.TestCase):
 
     def test_validate_sql_node_rejects_write_sql(self):
         state = validate_sql_node({"query": "bad", "sql": "DROP TABLE orders", "events": []})
-
         self.assertIn("error", state)
         self.assertEqual(state["events"][0]["type"], "error")
 
@@ -430,13 +411,11 @@ class RefactorFoundationTests(unittest.TestCase):
     def test_sql_graph_runner_can_build_langgraph(self):
         runner = SQLGraphRunner(SQLService("sqlite:///:memory:", engine=create_engine("sqlite:///:memory:")))
         graph = runner.build_langgraph()
-
         self.assertTrue(hasattr(graph, "invoke"))
 
     def test_retrieve_context_node_populates_state(self):
         adapter = LegacyRAGAdapter(FakeRetrievalRAG())
         state = retrieve_context_node({"query": "orders", "events": []}, adapter)
-
         self.assertEqual(state["retrieval_result"]["core_tables"], ["orders"])
         self.assertEqual(state["events"][0]["type"], "step")
 
@@ -444,13 +423,11 @@ class RefactorFoundationTests(unittest.TestCase):
         runner = RetrievalGraphRunner(LegacyRAGAdapter(FakeRetrievalRAG()), enable_pruning=False)
         state = runner.invoke_query("orders")
         graph = runner.build_langgraph()
-
         self.assertEqual(state["retrieval_result"]["database_index"], ["orders", "customers"])
         self.assertTrue(hasattr(graph, "invoke"))
 
     def test_extract_sql_from_markdown_response(self):
         sql = extract_sql_from_response("```sql\nSELECT * FROM orders;\n```")
-
         self.assertEqual(sql, "SELECT * FROM orders")
 
     def test_generate_sql_node_emits_legacy_code_events(self):
@@ -463,7 +440,6 @@ class RefactorFoundationTests(unittest.TestCase):
             },
             service,
         )
-
         self.assertEqual(state["sql"], "SELECT COUNT(*) AS total_orders FROM orders")
         self.assertEqual(
             [event["type"] for event in state["events"]],
@@ -474,7 +450,6 @@ class RefactorFoundationTests(unittest.TestCase):
     def test_generation_runner_can_build_langgraph(self):
         runner = SQLGenerationGraphRunner(SQLGenerationService(FakeLLMClient(), model_name="fake-model"))
         graph = runner.build_langgraph()
-
         self.assertTrue(hasattr(graph, "invoke"))
 
     def test_text2sql_runner_executes_end_to_end_with_fakes(self):
@@ -503,7 +478,6 @@ class RefactorFoundationTests(unittest.TestCase):
             sql_service=SQLService("sqlite:///:memory:", engine=create_engine("sqlite:///:memory:")),
         )
         graph = runner.build_langgraph()
-
         self.assertTrue(hasattr(graph, "invoke"))
 
     def test_text2sql_compiled_langgraph_includes_healing_loop(self):
@@ -552,7 +526,6 @@ class RefactorFoundationTests(unittest.TestCase):
             },
             service,
         )
-
         self.assertEqual(state["error"], "")
         self.assertEqual(state["error_category"], "unknown_column")
         self.assertEqual(state["sql"], "SELECT COUNT(*) AS total_orders FROM orders")
@@ -595,7 +568,7 @@ class RefactorFoundationTests(unittest.TestCase):
         self.assertEqual(health.status_code, 200)
         self.assertEqual(health.json()["status"], "ok")
 
-        response = client.post("/v1/query/stream", json={"query": "hello"})
+        response = client.post("/v1/query/graph/stream", json={"query": "hello"})
         self.assertEqual(response.status_code, 400)
         self.assertIn("api_key", response.json()["detail"])
 
@@ -608,33 +581,16 @@ class RefactorFoundationTests(unittest.TestCase):
             conn.execute(text("INSERT INTO metrics VALUES (5)"))
 
         app = create_app(DeepInsightSettings.from_mapping({"db_uris": []}))
-        # Override the route closure by creating a direct app with a shared in-memory
-        # URI is awkward, so this test focuses on validation behavior that does not
-        # need a configured database.
         client = TestClient(app)
         response = client.post("/v1/sql/execute", json={"sql": "DROP TABLE metrics"})
 
         self.assertEqual(response.status_code, 400)
         self.assertIn("Only read-only", response.json()["detail"])
 
-    def test_fastapi_graph_query_stream_is_disabled_by_default(self):
+    def test_fastapi_graph_query_stream_requires_api_key(self):
         from fastapi.testclient import TestClient
 
-        app = create_app(DeepInsightSettings.from_mapping({"api_key": "fake"}))
-        client = TestClient(app)
-        response = client.post("/v1/query/graph/stream", json={"query": "hello"})
-
-        self.assertEqual(response.status_code, 404)
-        self.assertIn("disabled", response.json()["detail"])
-
-    def test_fastapi_graph_query_stream_requires_api_key_when_enabled(self):
-        from fastapi.testclient import TestClient
-
-        app = create_app(
-            DeepInsightSettings.from_mapping(
-                {"api_key": "", "enable_graph_query_path": True}
-            )
-        )
+        app = create_app(DeepInsightSettings.from_mapping({"api_key": ""}))
         client = TestClient(app)
         response = client.post("/v1/query/graph/stream", json={"query": "hello"})
 
@@ -645,9 +601,7 @@ class RefactorFoundationTests(unittest.TestCase):
         from fastapi.testclient import TestClient
 
         app = create_app(
-            DeepInsightSettings.from_mapping(
-                {"api_key": "fake", "enable_graph_query_path": True}
-            ),
+            DeepInsightSettings.from_mapping({"api_key": "fake"}),
             graph_service_override=FakeGraphService(),
         )
         client = TestClient(app)
@@ -658,13 +612,25 @@ class RefactorFoundationTests(unittest.TestCase):
         self.assertIn('"type": "run"', response.text)
         self.assertIn("SELECT 1", response.text)
 
+    def test_fastapi_legacy_query_stream_alias_works(self):
+        """Verify /v1/query/stream is an alias for /v1/query/graph/stream."""
+        from fastapi.testclient import TestClient
+
+        app = create_app(
+            DeepInsightSettings.from_mapping({"api_key": "fake"}),
+            graph_service_override=FakeGraphService(),
+        )
+        client = TestClient(app)
+        response = client.post("/v1/query/stream", json={"query": "hello"})
+
+        self.assertEqual(response.status_code, 200)
+        self.assertIn("SELECT 1", response.text)
+
     def test_fastapi_session_and_run_status_endpoints(self):
         from fastapi.testclient import TestClient
 
         app = create_app(
-            DeepInsightSettings.from_mapping(
-                {"api_key": "fake", "enable_graph_query_path": True}
-            ),
+            DeepInsightSettings.from_mapping({"api_key": "fake"}),
             graph_service_override=FakeGraphService(),
         )
         client = TestClient(app)
@@ -705,7 +671,6 @@ class RefactorFoundationTests(unittest.TestCase):
     def test_api_client_exposes_insight_stream_compat_method(self):
         client = DeepInsightAPIClient()
         chunks = list(client.generate_insight_stream("hello", pd.DataFrame()))
-
         self.assertTrue(chunks)
         self.assertIn("无法生成商业洞察", chunks[0])
 

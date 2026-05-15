@@ -37,10 +37,8 @@
     "allow_empty_results": true,
     "use_reasoner_for_healing": false,
     "reasoner_model": "deepseek-reasoner",
-    "agent_backend": "graph",
     "query_runtime": "api",
     "api_server_url": "http://127.0.0.1:8000",
     "llm_timeout": 45.0,
-    "enable_graph_query_path": true,
     "use_chroma_rag": false
 }

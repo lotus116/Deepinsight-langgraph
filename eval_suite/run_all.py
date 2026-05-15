@@ -63,14 +63,13 @@ class EvalSuiteRunner:
     # 默认运行的实验组
     DEFAULT_GROUPS = ["G1", "G2", "G3"]
     
-    def __init__(self, database: str = "northwind", agent_backend: str = "legacy"):
-        """初始化运行器
-        
+    def __init__(self, database: str = "northwind"):
+        """Initialize the eval suite runner.
+
         Args:
-            database: 数据库名称 ("northwind" 或 "adventureworks")
+            database: Database name ("northwind" or "adventureworks")
         """
         self.database = database.lower()
-        self.agent_backend = agent_backend.lower()
         self.results_dir = Path(__file__).parent / "results"
         self.results_dir.mkdir(exist_ok=True)
         
@@ -149,7 +148,7 @@ class EvalSuiteRunner:
                 print(f"\n--- 第 {run_idx + 1}/{runs} 轮运行 ---")
             
             # 每轮创建新的 AccuracyBenchmark（即每轮创建新 Agent）
-            benchmark = AccuracyBenchmark(database=self.database, agent_backend=self.agent_backend)
+            benchmark = AccuracyBenchmark(database=self.database)
             
             # 运行前验证 Agent
             if run_idx == 0:
@@ -623,7 +622,7 @@ class EvalSuiteRunner:
         groups = groups or self.DEFAULT_GROUPS
         print(f"\n⏰ 开始时间: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}")
         print(f"📋 实验组: {' / '.join(groups)}")
-        print(f"🧠 Agent Backend: {self.agent_backend}")
+        print(f"🧠 Agent Backend: graph")
         
         if test_mode:
             limit = limit or 3
@@ -691,12 +690,9 @@ def main():
                         help="使用的数据库 (northwind 或 adventureworks)")
     parser.add_argument("--quiet", action="store_true",
                         help="安静模式，减少输出")
-    parser.add_argument("--agent-backend", choices=["legacy", "graph"], default="legacy",
-                        help="Agent 后端：legacy 使用原 Text2SQLAgent，graph 使用实验性 LangGraph 路径")
-    
     args = parser.parse_args()
-    
-    runner = EvalSuiteRunner(database=args.database, agent_backend=args.agent_backend)
+
+    runner = EvalSuiteRunner(database=args.database)
     runner.run(
         accuracy_only=args.accuracy_only,
         performance_only=args.performance_only,

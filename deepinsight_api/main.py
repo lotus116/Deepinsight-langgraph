@@ -10,10 +10,8 @@ from uuid import uuid4
 from pydantic import BaseModel, Field
 
 from deepinsight_core.config import DeepInsightSettings
-from deepinsight_core.graph.builder import iter_legacy_events
-from deepinsight_core.graph.state import DeepInsightState
 from deepinsight_core.graph.sql_runner import SQLGraphRunner
-from deepinsight_core.services.legacy_agent_service import LegacyAgentService
+from deepinsight_core.graph.state import DeepInsightState
 from deepinsight_core.services.rag_service import ChromaKnowledgeStore, ChromaRAGIndexer
 from deepinsight_core.services.sql_service import SQLService
 from deepinsight_core.services.text2sql_graph_service import Text2SQLGraphService, create_openai_client
@@ -55,7 +53,6 @@ class IndexRebuildRequest(BaseModel):
 
 def create_app(
     settings: Optional[DeepInsightSettings] = None,
-    agent_service_override: Optional[Any] = None,
     graph_service_override: Optional[Any] = None,
     sql_runner_override: Optional[Any] = None,
 ):
@@ -70,13 +67,16 @@ def create_app(
 
         settings = DeepInsightSettings.from_mapping(load_config())
     settings.ensure_storage_dirs()
-    agent_service = agent_service_override or LegacyAgentService(settings)
-    sql_runner = sql_runner_override or SQLGraphRunner(SQLService(settings.first_db_uri))
-    graph_service = graph_service_override or Text2SQLGraphService(settings)
 
-    app = FastAPI(title="DeepInsight API", version="0.1.0")
+    # Pre-initialize services to avoid lazy-init race conditions under concurrent requests
+    graph_service = graph_service_override or Text2SQLGraphService(settings)
+    sql_runner = sql_runner_override or SQLGraphRunner(SQLService(settings.first_db_uri))
+
+    app = FastAPI(title="DeepInsight API", version="0.2.0")
     sessions: Dict[str, Dict[str, Any]] = {}
     runs: Dict[str, Dict[str, Any]] = {}
+
+    CHROMA_COLLECTION = f"{settings.chroma_collection_prefix}_rag"
 
     def now_iso() -> str:
         return datetime.now(timezone.utc).isoformat()
@@ -120,41 +120,8 @@ def create_app(
             raise HTTPException(status_code=404, detail="run not found")
         return runs[run_id]
 
-    @app.post("/v1/query/stream")
-    def query_stream(request: QueryRequest = Body(...)) -> StreamingResponse:
-        if not settings.api_key:
-            raise HTTPException(status_code=400, detail="api_key is not configured")
-
-        state: DeepInsightState = {
-            "session_id": request.session_id,
-            "query": request.query,
-            "history_context": request.history_context,
-        }
-        run_id = create_run(request.session_id, request.query, request.run_id)
-
-        def event_source():
-            yield f"data: {json.dumps({'type': 'run', 'run_id': run_id}, ensure_ascii=False)}\n\n"
-            try:
-                for event in iter_legacy_events(agent_service, state):
-                    if event.get("type") == "result":
-                        finish_run(run_id, "completed")
-                    elif event.get("type") == "error":
-                        finish_run(run_id, "failed", event.get("msg", ""))
-                    payload = json.dumps(event, ensure_ascii=False, default=_json_default)
-                    yield f"data: {payload}\n\n"
-                if runs.get(run_id, {}).get("status") == "running":
-                    finish_run(run_id, "completed")
-            except Exception as exc:
-                finish_run(run_id, "failed", str(exc))
-                payload = json.dumps({"type": "error", "msg": str(exc)}, ensure_ascii=False)
-                yield f"data: {payload}\n\n"
-
-        return StreamingResponse(event_source(), media_type="text/event-stream")
-
     @app.post("/v1/query/graph/stream")
     def query_graph_stream(request: QueryRequest) -> StreamingResponse:
-        if not settings.raw.get("enable_graph_query_path", False):
-            raise HTTPException(status_code=404, detail="graph query path is disabled")
         if not settings.api_key:
             raise HTTPException(status_code=400, detail="api_key is not configured")
         run_id = create_run(request.session_id, request.query, request.run_id)
@@ -198,6 +165,11 @@ def create_app(
 
         return StreamingResponse(event_source(), media_type="text/event-stream")
 
+    @app.post("/v1/query/stream")
+    def query_stream(request: QueryRequest = Body(...)) -> StreamingResponse:
+        """Backward-compatible alias for /v1/query/graph/stream."""
+        return query_graph_stream(request)
+
     @app.post("/v1/sql/execute")
     def execute_sql(request: SQLExecuteRequest) -> Dict[str, Any]:
         state = sql_runner.invoke_sql(
@@ -235,7 +207,7 @@ def create_app(
 {data_preview}
 
 输出要求：
-1. 只输出最终答案，不要写推理过程、任务复述、提示词分析或“我们被要求”等措辞。
+1. 只输出最终答案，不要写推理过程、任务复述、提示词分析或"我们被要求"等措辞。
 2. 第一句话直接回答用户问题；如果是 TOP/N 排名，请列出名称即可，不要编造数据中没有的字段。
 3. 第二句话给出一句业务洞察或建议。
 4. 总长度控制在 120 个中文字符以内。
@@ -267,6 +239,9 @@ def create_app(
 
     @app.post("/v1/index/rebuild")
     def rebuild_index(request: IndexRebuildRequest) -> Dict[str, Any]:
+        if not settings.api_key:
+            raise HTTPException(status_code=401, detail="api_key is required for index rebuild")
+
         from rag_engine import IntelRAG
 
         rag = IntelRAG(
@@ -280,7 +255,7 @@ def create_app(
 
         store = ChromaKnowledgeStore(
             persist_path=settings.chroma_path,
-            collection_name=f"{settings.chroma_collection_prefix}_graph_rag",
+            collection_name=CHROMA_COLLECTION,
         )
         count = ChromaRAGIndexer(store).upsert_legacy_documents(
             documents=documents,
@@ -288,7 +263,7 @@ def create_app(
             source=request.source,
             namespace=request.namespace or f"{settings.chroma_collection_prefix}:graph",
         )
-        return {"indexed_documents": count, "collection": f"{settings.chroma_collection_prefix}_graph_rag"}
+        return {"indexed_documents": count, "collection": CHROMA_COLLECTION}
 
     return app
 

@@ -16,7 +16,6 @@ def apply_env_overrides(config):
         "DEEPINSIGHT_API_BASE": "api_base",
         "DEEPINSIGHT_MODEL_NAME": "model_name",
         "DEEPINSIGHT_RECOMMENDATION_API_KEY": "recommendation_api_key",
-        "DEEPINSIGHT_AGENT_BACKEND": "agent_backend",
         "DEEPINSIGHT_USE_CHROMA_RAG": "use_chroma_rag",
         "DEEPINSIGHT_QUERY_RUNTIME": "query_runtime",
         "DEEPINSIGHT_API_SERVER_URL": "api_server_url",
@@ -35,8 +34,6 @@ def apply_env_overrides(config):
                 continue
         else:
             config[key] = value
-    if config.get("agent_backend") == "graph":
-        config["enable_graph_query_path"] = True
     return config
 
 def load_config():
@@ -59,14 +56,10 @@ def load_config():
                     config["enable_history_context"] = True
                 if "max_context_items" not in config:
                     config["max_context_items"] = 3
-                if "agent_backend" not in config:
-                    config["agent_backend"] = "graph"
-                if "enable_graph_query_path" not in config:
-                    config["enable_graph_query_path"] = config.get("agent_backend") == "graph"
                 if "use_chroma_rag" not in config:
                     config["use_chroma_rag"] = False
                 if "query_runtime" not in config:
-                    config["query_runtime"] = "api"
+                    config["query_runtime"] = "local"
                 if "api_server_url" not in config:
                     config["api_server_url"] = "http://127.0.0.1:8000"
                 if "llm_timeout" not in config:
@@ -89,7 +82,8 @@ def load_config():
                     }
                 
                 return apply_env_overrides(config)
-        except: pass
+        except Exception as exc:
+            print(f"[WARNING] Failed to load config.json: {exc}, using defaults")
     return apply_env_overrides({
         "api_key": "", "api_base": "https://api.deepseek.com", "model_name": "deepseek-reasoner",
         "db_type": "SQLite", "db_path": "data/ecommerce.db", "db_uris": ["sqlite:///data/ecommerce.db"],
@@ -102,10 +96,8 @@ def load_config():
         "recommendation_model_name": "deepseek-reasoner",
         "enable_history_context": True,
         "max_context_items": 3,
-        "agent_backend": "graph",
-        "enable_graph_query_path": True,
         "use_chroma_rag": False,
-        "query_runtime": "api",
+        "query_runtime": "local",
         "api_server_url": "http://127.0.0.1:8000",
         "llm_timeout": 45.0,
         # 分离的数据库配置

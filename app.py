@@ -43,11 +43,10 @@ def create_openai_client_safe(api_key, base_url, timeout=60.0):
 import streamlit as st
 import pandas as pd
 import time
+import json
 import psutil
 import os
 import logging
-from rag_engine import IntelRAG
-from agent_core import Text2SQLAgent
 from deepinsight_core.config import DeepInsightSettings
 from deepinsight_core.services.api_client import DeepInsightAPIClient, DeepInsightAPIError
 from deepinsight_core.services.text2sql_graph_service import Text2SQLGraphService
@@ -371,7 +370,7 @@ with st.sidebar:
                 industry_terms = st.text_area(
                     "行业术语 (用逗号分隔)",
                     value=current_context.industry_terms,
-                    height=60,
+                    height=68,
                     placeholder="例如：零售业、电商、供应链、库存周转率、客单价",
                     help="输入您所在行业的专业术语，系统会自动识别和解释"
                 )
@@ -780,12 +779,6 @@ with st.sidebar:
         log_path = st.text_input("日志路径", st.session_state.config.get("log_file", "data/agent.log"))
         max_retries = st.slider("最大重试", 1, 10, st.session_state.config.get("max_retries", 3))
         max_candidates = st.slider("可能性探索 (条)", 1, 5, st.session_state.config.get("max_candidates", 3))
-        agent_backend = st.selectbox(
-            "Agent Backend",
-            ["legacy", "graph"],
-            index=0 if st.session_state.config.get("agent_backend", "legacy") != "graph" else 1,
-            help="legacy 使用原 Text2SQLAgent；graph 使用重构后的 LangGraph 路径。"
-        )
         query_runtime = st.selectbox(
             "Query Runtime",
             ["api", "auto", "local"],
@@ -838,8 +831,6 @@ with st.sidebar:
             # ⭐ Reasoner 自愈模式配置
             "use_reasoner_for_healing": use_reasoner_for_healing,
             "reasoner_model": reasoner_model,
-            "agent_backend": agent_backend,
-            "enable_graph_query_path": agent_backend == "graph",
             "use_chroma_rag": use_chroma_rag,
             "query_runtime": query_runtime,
             "api_server_url": api_server_url
@@ -1095,42 +1086,21 @@ class APIFirstAgentAdapter:
 def build_local_agent(cfg):
     if not cfg["api_key"]:
         raise ValueError("请配置 API Key")
-    if cfg.get("agent_backend", "graph") == "graph":
-        settings = DeepInsightSettings.from_mapping(cfg)
-        service = Text2SQLGraphService(settings)
-        return service.as_agent_adapter()
-
-    rag = IntelRAG(
-        model_path=cfg.get("model_path"),
-        db_uris=cfg.get("db_uris", []),
-        kb_paths=cfg.get("kb_paths_list", []),
-    )
-    return Text2SQLAgent(
-        api_key=cfg["api_key"],
-        base_url=cfg["api_base"],
-        model_name=cfg["model_name"],
-        db_uris=cfg.get("db_uris", []),
-        rag_engine=rag,
-        max_retries=cfg.get("max_retries", 3),
-        max_candidates=cfg.get("max_candidates", 1),
-        log_file=cfg.get("log_file", "data/agent.log"),
-        config=cfg,
-        reasoner_model=cfg.get("reasoner_model", "deepseek-reasoner"),
-        use_reasoner_for_healing=cfg.get("use_reasoner_for_healing", True),
-    )
+    settings = DeepInsightSettings.from_mapping(cfg)
+    service = Text2SQLGraphService(settings)
+    return service.as_agent_adapter()
 
 
 # --- 懒加载 Agent ---
 @st.cache_resource
-def get_agent(cfg):
+def get_agent(_config_fingerprint, cfg):
     try:
-        runtime = cfg.get("query_runtime", "api")
-        endpoint = "/v1/query/graph/stream" if cfg.get("agent_backend", "graph") == "graph" else "/v1/query/stream"
+        runtime = cfg.get("query_runtime", "local")
 
         if runtime in {"api", "auto"}:
             api_agent = DeepInsightAPIClient(
                 base_url=cfg.get("api_server_url", "http://127.0.0.1:8000"),
-                endpoint=endpoint,
+                endpoint="/v1/query/graph/stream",
                 session_id=st.session_state.current_session_id,
             )
             if runtime == "api":
@@ -1782,16 +1752,22 @@ for msg_index, msg in enumerate(messages):
 if prompt_input:
     # 懒加载
     agent = None
+    cfg = st.session_state.config
+    cfg_fingerprint = json.dumps({
+        k: cfg.get(k) for k in ("db_uris", "model_name", "api_key", "api_base",
+                                  "model_path", "chroma_path", "use_chroma_rag",
+                                  "query_runtime", "api_server_url", "llm_timeout")
+    }, sort_keys=True, default=str)
     if not st.session_state.agent_loaded:
         with st.status("🚀 首次运行，正在加载 OpenVINO 加速引擎...", expanded=True) as status:
-            agent, err = get_agent(st.session_state.config)
+            agent, err = get_agent(cfg_fingerprint, cfg)
             if err:
                 status.update(label="❌ 初始化失败", state="error")
                 st.error(err); st.stop()
             st.session_state.agent_loaded = True
             status.update(label="✅ 引擎加载完毕", state="complete", expanded=False)
     else:
-        agent, err = get_agent(st.session_state.config)
+        agent, err = get_agent(cfg_fingerprint, cfg)
         if err: st.error(err); st.stop()
     
     # 确保agent已正确加载
