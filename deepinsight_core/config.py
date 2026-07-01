@@ -1,7 +1,7 @@
 """Configuration helpers for service-oriented DeepInsight code.
 
 The current project stores most settings in ``data/config.json`` and passes the
-raw dictionary directly into Streamlit and ``Text2SQLAgent``.  This module keeps
+raw dictionary directly into Streamlit.  This module keeps
 that dictionary compatible while giving the refactored services a typed,
 central place to read defaults from.
 """
@@ -10,7 +10,8 @@ from __future__ import annotations
 
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import Any, Dict, List, Optional
+from types import MappingProxyType
+from typing import Any, Dict, List, Mapping, Optional
 
 
 @dataclass(frozen=True)
@@ -33,7 +34,7 @@ class DeepInsightSettings:
     chroma_collection_prefix: str = "deepinsight"
     use_chroma_rag: bool = False
 
-    raw: Dict[str, Any] = field(default_factory=dict)
+    raw: Mapping[str, Any] = field(default_factory=dict)
 
     @classmethod
     def from_mapping(cls, config: Optional[Dict[str, Any]]) -> "DeepInsightSettings":
@@ -53,7 +54,7 @@ class DeepInsightSettings:
             chroma_path=config.get("chroma_path", "data/chroma"),
             chroma_collection_prefix=config.get("chroma_collection_prefix", "deepinsight"),
             use_chroma_rag=bool(config.get("use_chroma_rag", False)),
-            raw=config,
+            raw=MappingProxyType(config),
         )
 
     @property

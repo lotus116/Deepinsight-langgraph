@@ -48,14 +48,12 @@ if str(PROJECT_ROOT) not in sys.path:
 # 导入评测数据模块 (必须可用)
 from eval_suite.data_loader import EvalDataLoader, EvalCase, Difficulty
 
-# 导入项目核心模块 (可选，不可用时使用模拟模式)
+# 导入项目核心模块
 try:
-    from agent_core import Text2SQLAgent
     from rag_engine import IntelRAG
     CORE_AVAILABLE = True
 except ImportError as e:
-    print(f"⚠️ 警告: 无法导入核心模块 - {e}")
-    print("   将使用模拟模式进行评测")
+    print(f"⚠️ 警告: 无法导入 rag_engine - {e}")
     CORE_AVAILABLE = False
 
 try:
@@ -440,14 +438,14 @@ class AccuracyBenchmark:
     # 数据库配置映射
     DATABASE_CONFIGS = {
         "northwind": {
-            "db_uri": "mysql+pymysql://root:123456@localhost:3306/northwind",
+            "db_uri": os.getenv("DEEPINSIGHT_NORTHWIND_DB_URI", "mysql+pymysql://root@localhost:3306/northwind"),
             "schema_path": "data/schema_northwind.json",
             "prompt_config_path": "data/prompt_config.json",
             "kb_paths": ["data/schema_northwind.json", "data/prompt_config.json"],
             "display_name": "Northwind"
         },
         "adventureworks": {
-            "db_uri": "mysql+pymysql://root:123456@localhost:3306/adventureworks",
+            "db_uri": os.getenv("DEEPINSIGHT_ADVENTUREWORKS_DB_URI", "mysql+pymysql://root@localhost:3306/adventureworks"),
             "schema_path": "data/schema_adventureworks.json",
             "prompt_config_path": "data/prompt_config_adventureworks.json",
             "kb_paths": [
@@ -458,7 +456,7 @@ class AccuracyBenchmark:
         }
     }
     
-    def __init__(self, config_path: str = None, database: str = "northwind", agent_backend: str = "legacy"):
+    def __init__(self, config_path: str = None, database: str = "northwind"):
         """
         初始化评测器
         
@@ -471,7 +469,6 @@ class AccuracyBenchmark:
         
         self.config_path = Path(config_path)
         self.database = database.lower()
-        self.agent_backend = agent_backend.lower()
         self.config = self._load_config()
         
         # 根据数据库覆盖配置
@@ -502,8 +499,8 @@ class AccuracyBenchmark:
         print("✅ AccuracyBenchmark 初始化完成")
         print(f"   📊 评测用例: {len(self.data_loader.cases)} 道")
         print(f"   🗄️ 数据库: MySQL ({display_name})")
-        print(f"   🧠 Agent Backend: {self.agent_backend}")
-    
+        print(f"   🧠 Agent Backend: graph")
+
     def _load_config(self) -> Dict:
         """加载配置文件"""
         if self.config_path.exists():
@@ -544,197 +541,83 @@ class AccuracyBenchmark:
             print(f"   {mode.value}: {status}")
         return results
     
-    def _create_baseline_agent(self) -> Optional['Text2SQLAgent']:
+    def _create_baseline_agent(self):
         """
-        创建 G1 Baseline 模式的 Agent
-        
-        G1 Baseline 模式特点：
-        - 禁用 RAG 语义检索 (传入 MockRAG 返回完整 Schema)
-        - 禁用 KECA 知识增强 (不传入 config，避免 EnhancedPromptBuilder 加载)
-        - 禁用错误自愈 (max_retries = 0)
-        - 表选择器仅使用关键词匹配（无语义向量）
-        
-        学术意义: 测量 LLM 在无辅助情况下的原始 Text-to-SQL 能力。
+        创建 G1 Baseline 模式的 Agent（使用 Graph 后端，禁用 RAG 精排 + 自愈）。
         """
-        if not CORE_AVAILABLE:
-            return None
-        
-        # 创建一个 Mock RAG，模拟无语义匹配的情况
-        class MockRAG:
-            """
-            Mock RAG 引擎 - 用于 Baseline 评测
-            
-            特点：
-            - model = None (禁用语义向量匹配)
-            - retrieve 返回完整 Schema
-            - _get_embedding 返回零向量
-            """
-            def __init__(self, schema_path, kb_paths=None):
-                # 核心属性：model 设为 None，表示无语义匹配能力
-                self.model = None
-                self.tokenizer = None
-                self.kb_paths = kb_paths or []
-                self.db_uris = []
-                self.documents = []
-                self.embeddings = None
-                
-                # 加载完整 Schema
-                self.schema = self._load_full_schema(schema_path)
-            
-            def _load_full_schema(self, path):
-                """加载 Schema 文件内容"""
-                if os.path.exists(path):
-                    with open(path, 'r', encoding='utf-8') as f:
-                        return json.dumps(json.load(f), ensure_ascii=False, indent=2)
-                return ""
-            
-            def _get_embedding(self, text):
-                """返回零向量（无语义匹配能力）"""
-                import numpy as np
-                return np.zeros(384)
-            
-            def retrieve(self, query, top_k=5):
-                """返回完整 Schema，模拟无 RAG 的情况"""
-                # 返回: (context_str, latency_ms, memory_delta_mb)
-                return self.schema, 0.0, 0.0
-        
-        # 使用配置的 Schema (支持 Northwind / AdventureWorks)
-        schema_path = self.config.get("schema_path", "data/schema_northwind.json")
-        if not os.path.isabs(schema_path):
-            schema_path = str(PROJECT_ROOT / schema_path)
-        
-        kb_paths = self.config.get("kb_paths_list", [schema_path])
-        mock_rag = MockRAG(schema_path, kb_paths)
-        
-        try:
-            agent = Text2SQLAgent(
-                api_key=self.config.get("api_key", ""),
-                base_url=self.config.get("api_base", ""),
-                model_name=self.config.get("model_name", ""),
-                db_uris=self.config.get("db_uris", []),
-                rag_engine=mock_rag,
-                max_retries=0,      # 禁用重试
-                max_candidates=1,   # ⭐ 禁用歧义消解，避免额外LLM调用
-                config=None,        # ⭐ 禁用 KECA 知识增强
-                temperature=0.0     # 评测时使用确定性输出
-            )
-            return agent
-        except Exception as e:
-            print(f"❌ 创建 Baseline Agent 失败: {e}")
-            traceback.print_exc()
-            return None
-    
-    def _create_knowledge_rag_agent(self) -> Optional['Text2SQLAgent']:
-        """
-        创建 G2 Knowledge-RAG 模式的 Agent
-        
-        G2 Knowledge-RAG 模式特点：
-        - 启用 RAG 语义检索 (动态 Top-K Schema 选择 + OpenVINO加速)
-        - 启用 KECA 知识增强 (传入 config，加载业务上下文/术语词典/示例)
-        - 禁用错误自愈 (max_retries = 0)
-        
-        学术意义: 量化"精排检索"相对于"全量投喂"在 Token 节省（效率）与准确率（精度）上的双重收益。
-        """
-        if not CORE_AVAILABLE:
-            return None
-        
-        try:
-            model_path = PROJECT_ROOT / self.config.get("model_path", "models/bge-small-ov")
-            rag = IntelRAG(
-                model_path=str(model_path),
-                db_uris=self.config.get("db_uris", []),
-                kb_paths=self.config.get("kb_paths_list", [])
-            )
-            
-            agent = Text2SQLAgent(
-                api_key=self.config.get("api_key", ""),
-                base_url=self.config.get("api_base", ""),
-                model_name=self.config.get("model_name", ""),
-                db_uris=self.config.get("db_uris", []),
-                rag_engine=rag,
-                max_retries=0,      # 禁用重试
-                max_candidates=1,   # ⭐ 禁用歧义消解，避免额外LLM调用
-                config=self.config, # ⭐ 启用 KECA 知识增强
-                temperature=0.0     # 评测时使用确定性输出
-            )
-            return agent
-        except Exception as e:
-            print(f"❌ 创建 Knowledge-RAG Agent 失败: {e}")
-            return None
-    
-    def _create_full_system_agent(self) -> Optional['Text2SQLAgent']:
-        """
-        创建 G3 Full System 模式的 Agent
-        
-        G3 Full System 模式特点：
-        - 启用 RAG 语义检索 (动态 Top-K Schema 选择 + OpenVINO加速)
-        - 启用 KECA 知识增强 (业务上下文/术语词典/示例)
-        - 启用错误自愈 (使用配置的 max_retries)
-        
-        学术意义: 验证 Agent 的自愈反馈如何修复 RAG 阶段可能存在的"精排遗漏"，达到最终性能上限。
-        """
-        if not CORE_AVAILABLE:
-            return None
+        return self._create_graph_agent(enable_pruning=False, max_healing_attempts=0)
 
-        if self.agent_backend == "graph":
-            return self._create_graph_full_system_agent()
-        
-        try:
-            model_path = PROJECT_ROOT / self.config.get("model_path", "models/bge-small-ov")
-            rag = IntelRAG(
-                model_path=str(model_path),
-                db_uris=self.config.get("db_uris", []),
-                kb_paths=self.config.get("kb_paths_list", [])
-            )
-            
-            agent = Text2SQLAgent(
-                api_key=self.config.get("api_key", ""),
-                base_url=self.config.get("api_base", ""),
-                model_name=self.config.get("model_name", ""),
-                db_uris=self.config.get("db_uris", []),
-                rag_engine=rag,
-                max_retries=self.config.get("max_retries", 4),  # 启用自愈 (基于优化分析增至4次)
-                max_candidates=1,   # ⭐ 禁用歧义消解，避免额外LLM调用
-                config=self.config, # ⭐ 启用 KECA 知识增强
-                temperature=0.0,    # 评测时使用确定性输出
-                # ⭐ Reasoner 自愈模式配置 (从 config 读取，统一控制)
-                reasoner_model=self.config.get("reasoner_model", "deepseek-reasoner"),
-                use_reasoner_for_healing=self.config.get("use_reasoner_for_healing", True)
-            )
-            return agent
-        except Exception as e:
-            print(f"❌ 创建 Full System Agent 失败: {e}")
-            return None
-
-    def _create_graph_full_system_agent(self):
+    def _create_knowledge_rag_agent(self):
         """
-        创建实验性的 Graph Full System Agent。
+        创建 G2 Knowledge-RAG 模式的 Agent（使用 Graph 后端，启用 RAG 精排，禁用自愈）。
+        """
+        return self._create_graph_agent(enable_pruning=True, max_healing_attempts=0)
 
-        该路径通过 GraphAgentAdapter 暴露 generate_and_execute_stream()，
-        因此 eval_suite 的事件消费逻辑无需改动。
+    def _create_full_system_agent(self):
+        """
+        创建 G3 Full System 模式的 Agent（使用 Graph 后端，全部启用）。
+        """
+        return self._create_graph_agent(
+            enable_pruning=True,
+            max_healing_attempts=self.config.get("max_retries", 4),
+        )
+
+    def _create_graph_agent(self, enable_pruning: bool = True, max_healing_attempts: int = 0):
+        """
+        创建 Graph Agent（通过 GraphAgentAdapter 暴露 generate_and_execute_stream()）。
         """
         if not GRAPH_CORE_AVAILABLE:
             print("❌ Graph backend 不可用，请检查 deepinsight_core 导入")
             return None
 
         try:
-            graph_config = dict(self.config)
-            graph_config["enable_graph_query_path"] = True
-            settings = DeepInsightSettings.from_mapping(graph_config)
-            service = Text2SQLGraphService(settings)
-            return service.as_agent_adapter()
+            settings = DeepInsightSettings.from_mapping(dict(self.config))
+            from deepinsight_core.graph.text2sql_runner import Text2SQLGraphRunner
+            from deepinsight_core.services.rag_service import LegacyRAGAdapter
+            from deepinsight_core.services.sql_generation_service import SQLGenerationService
+            from deepinsight_core.services.sql_service import SQLService
+            from deepinsight_core.services.graph_agent_adapter import GraphAgentAdapter
+            from deepinsight_core.services.text2sql_graph_service import create_openai_client
+            from sqlalchemy import create_engine
+            from rag_engine import IntelRAG
+
+            rag = IntelRAG(
+                model_path=str(PROJECT_ROOT / self.config.get("model_path", "models/bge-small-ov")),
+                db_uris=self.config.get("db_uris", []),
+                kb_paths=self.config.get("kb_paths_list", []),
+            )
+
+            llm_client = create_openai_client(
+                api_key=self.config.get("api_key", ""),
+                base_url=self.config.get("api_base", ""),
+                timeout=float(self.config.get("llm_timeout", 45.0)),
+            )
+            db_engine = create_engine(settings.first_db_uri) if settings.first_db_uri else None
+
+            runner = Text2SQLGraphRunner(
+                rag_adapter=LegacyRAGAdapter(rag),
+                generation_service=SQLGenerationService(llm_client, settings.model_name, temperature=0.0),
+                sql_service=SQLService(settings.first_db_uri, engine=db_engine),
+                enable_pruning=enable_pruning,
+                max_healing_attempts=max_healing_attempts,
+                rag_config=dict(self.config),
+                rag_llm_client=llm_client,
+                rag_model_name=settings.model_name,
+                rag_db_engine=db_engine,
+            )
+            return GraphAgentAdapter(runner)
         except Exception as e:
-            print(f"❌ 创建 Graph Full System Agent 失败: {e}")
+            print(f"❌ 创建 Graph Agent 失败: {e}")
             traceback.print_exc()
             return None
     
-    def _extract_sql_from_stream(self, agent: 'Text2SQLAgent', query: str) -> Tuple[str, float, dict]:
+    def _extract_sql_from_stream(self, agent, query: str) -> Tuple[str, float, dict]:
         """
         从 Agent 的流式输出中提取生成的 SQL 和 RAG 中间态数据
         
         Args:
-            agent: Text2SQLAgent 实例
-            query: 自然语言问题
+            agent: GraphAgentAdapter instance
+            query: natural language question
             
         Returns:
             (生成的 SQL, 耗时 ms, RAG 中间态数据 dict)
@@ -826,7 +709,7 @@ class AccuracyBenchmark:
         
         return generated_sql, elapsed_ms, rag_metadata
     
-    def _extract_sql_from_text(self, text: str, agent: Optional['Text2SQLAgent'] = None) -> str:
+    def _extract_sql_from_text(self, text: str, agent: Optional['GraphAgentAdapter'] = None) -> str:
         """
         从可能包含 markdown 的文本中提取纯 SQL
         
@@ -869,7 +752,7 @@ class AccuracyBenchmark:
     def _evaluate_single_case(
         self, 
         case: EvalCase, 
-        agent: Optional['Text2SQLAgent'],
+        agent: Optional['GraphAgentAdapter'],
         mode: ExperimentMode
     ) -> EvalResult:
         """
@@ -1276,7 +1159,7 @@ class AccuracyBenchmark:
     
     def _run_experiment(
         self, 
-        agent: Optional['Text2SQLAgent'],
+        agent: Optional['GraphAgentAdapter'],
         mode: ExperimentMode,
         limit: int = None,
         verbose: bool = True
@@ -1502,15 +1385,12 @@ def main():
     parser.add_argument("--limit", type=int, default=None, help="限制评测用例数量")
     parser.add_argument("--test-mode", action="store_true", help="测试模式（少量样本）")
     parser.add_argument("--quiet", action="store_true", help="安静模式")
-    parser.add_argument("--agent-backend", choices=["legacy", "graph"], default="legacy",
-                        help="Agent 后端：legacy 使用原 Text2SQLAgent，graph 使用实验性 LangGraph 路径")
-    
     args = parser.parse_args()
-    
+
     if args.test_mode and args.limit is None:
         args.limit = 3
-    
-    benchmark = AccuracyBenchmark(agent_backend=args.agent_backend)
+
+    benchmark = AccuracyBenchmark()
     verbose = not args.quiet
     
     if args.mode == "all":

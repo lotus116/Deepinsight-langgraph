@@ -51,11 +51,18 @@ class SQLGenerationService:
         table_details = retrieval_result.get("core_table_details", [])
         terms = retrieval_result.get("matched_terms", [])
         examples = retrieval_result.get("matched_examples", [])
+        sql_plan = retrieval_result.get("sql_plan") or retrieval_result.get("plan") or {}
 
         sections: List[str] = [
             "You are a careful Text-to-SQL engineer.",
-            "Generate one read-only SQL query that answers the user question.",
+            "Generate one read-only MySQL-compatible SQL query that answers the user question.",
             "Return SQL only. Do not include markdown or explanation.",
+            "Use only the provided tables and columns.",
+            "Do not invent table names or column names.",
+            "Respect exact column names from the schema. For Northwind, products uses Price; orderdetails uses UnitPrice.",
+            "If the user asks for profit, margin, or cost but no cost column exists, do not invent cost fields. Use available sales/discount metrics or return a safe query over available fields.",
+            "Do not use SELECT *.",
+            "Do not generate INSERT, UPDATE, DELETE, DROP, ALTER, CREATE, TRUNCATE, CALL, EXEC, or multiple statements.",
             f"User question: {query}",
         ]
         if database_index:
@@ -65,11 +72,47 @@ class SQLGenerationService:
                 detail.get("document", str(detail)) for detail in table_details
             )
             sections.append(f"Relevant schema:\n{schema_text}")
+            sections.append(
+                "Allowed columns by table:\n"
+                + self._format_allowed_columns(
+                    table_details,
+                    retrieval_result.get("schema_catalog") or {},
+                )
+            )
+        if sql_plan:
+            sections.append(f"SQL plan:\n{sql_plan}")
         if terms:
             sections.append(f"Matched business terms:\n{terms}")
         if examples:
             sections.append(f"Relevant examples:\n{examples}")
         return "\n\n".join(sections)
+
+    @staticmethod
+    def _format_allowed_columns(
+        table_details: List[Dict[str, Any]],
+        schema_catalog: Optional[Dict[str, Any]] = None,
+    ) -> str:
+        lines = []
+        seen_tables = set()
+        for detail in table_details:
+            table_name = detail.get("table_name", "")
+            columns = []
+            for column in detail.get("columns", []) or []:
+                if isinstance(column, dict):
+                    name = column.get("col") or column.get("name")
+                    col_type = column.get("type")
+                    columns.append(f"{name} ({col_type})" if name and col_type else name)
+                else:
+                    columns.append(str(column))
+            if table_name and columns:
+                seen_tables.add(table_name.lower())
+                lines.append(f"- {table_name}: {', '.join(col for col in columns if col)}")
+        for table_name, columns in (schema_catalog or {}).items():
+            if not table_name or table_name.lower() in seen_tables:
+                continue
+            if columns:
+                lines.append(f"- {table_name}: {', '.join(str(column) for column in columns if column)}")
+        return "\n".join(lines) if lines else "No column list available."
 
     def build_repair_prompt(
         self,

@@ -1,5 +1,6 @@
 """Validate Gold SQL against MySQL - writes to file"""
 import json
+import os
 from sqlalchemy import create_engine, text
 import pandas as pd
 
@@ -8,7 +9,7 @@ def test_gold_sql():
         cases = json.load(f)
     
     engine = create_engine(
-        "mysql+pymysql://root:1234567@localhost:3306/northwind",
+        os.getenv("DEEPINSIGHT_NORTHWIND_DB_URI", "mysql+pymysql://root@localhost:3306/northwind"),
         pool_pre_ping=True
     )
     

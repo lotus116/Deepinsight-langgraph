@@ -28,8 +28,14 @@ class GraphAgentAdapter:
                 for idx, item in enumerate(rough)
             ),
             "core_tables_display": ", ".join(core_tables),
-            "matched_terms_display": "",
-            "matched_examples_display": "",
+            "matched_terms_display": "\n".join(
+                f"- {item.get('term', '')}: {item.get('explanation', '')}"
+                for item in self.last_retrieval_result.get("matched_terms", [])
+            ) or "无匹配术语",
+            "matched_examples_display": "\n".join(
+                f"- {item.get('query', '')}"
+                for item in self.last_retrieval_result.get("matched_examples", [])
+            ) or "无匹配示例",
             "metrics_display": str(self.last_retrieval_result.get("metrics", {})),
         }
 

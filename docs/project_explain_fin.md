@@ -935,7 +935,7 @@ def save_config_safely(config_data):
     "api_base": "https://api.deepseek.com/v1",
     "model_name": "deepseek-chat",
     "db_type": "MySQL",
-    "db_uris": ["mysql+pymysql://root:123456@localhost:3306/adventureworks"],
+    "db_uris": ["mysql+pymysql://root@localhost:3306/adventureworks"],
     "schema_path": "data/schema_adventureworks.json",
     "model_path": "models/bge-small-ov",
     "max_retries": 4,

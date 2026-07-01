@@ -43,11 +43,10 @@ def create_openai_client_safe(api_key, base_url, timeout=60.0):
 import streamlit as st
 import pandas as pd
 import time
+import json
 import psutil
 import os
 import logging
-from rag_engine import IntelRAG
-from agent_core import Text2SQLAgent
 from deepinsight_core.config import DeepInsightSettings
 from deepinsight_core.services.api_client import DeepInsightAPIClient, DeepInsightAPIError
 from deepinsight_core.services.text2sql_graph_service import Text2SQLGraphService
@@ -371,7 +370,7 @@ with st.sidebar:
                 industry_terms = st.text_area(
                     "行业术语 (用逗号分隔)",
                     value=current_context.industry_terms,
-                    height=60,
+                    height=68,
                     placeholder="例如：零售业、电商、供应链、库存周转率、客单价",
                     help="输入您所在行业的专业术语，系统会自动识别和解释"
                 )
@@ -780,12 +779,6 @@ with st.sidebar:
         log_path = st.text_input("日志路径", st.session_state.config.get("log_file", "data/agent.log"))
         max_retries = st.slider("最大重试", 1, 10, st.session_state.config.get("max_retries", 3))
         max_candidates = st.slider("可能性探索 (条)", 1, 5, st.session_state.config.get("max_candidates", 3))
-        agent_backend = st.selectbox(
-            "Agent Backend",
-            ["legacy", "graph"],
-            index=0 if st.session_state.config.get("agent_backend", "legacy") != "graph" else 1,
-            help="legacy 使用原 Text2SQLAgent；graph 使用重构后的 LangGraph 路径。"
-        )
         query_runtime = st.selectbox(
             "Query Runtime",
             ["api", "auto", "local"],
@@ -838,8 +831,6 @@ with st.sidebar:
             # ⭐ Reasoner 自愈模式配置
             "use_reasoner_for_healing": use_reasoner_for_healing,
             "reasoner_model": reasoner_model,
-            "agent_backend": agent_backend,
-            "enable_graph_query_path": agent_backend == "graph",
             "use_chroma_rag": use_chroma_rag,
             "query_runtime": query_runtime,
             "api_server_url": api_server_url
@@ -1095,42 +1086,22 @@ class APIFirstAgentAdapter:
 def build_local_agent(cfg):
     if not cfg["api_key"]:
         raise ValueError("请配置 API Key")
-    if cfg.get("agent_backend", "graph") == "graph":
-        settings = DeepInsightSettings.from_mapping(cfg)
-        service = Text2SQLGraphService(settings)
-        return service.as_agent_adapter()
-
-    rag = IntelRAG(
-        model_path=cfg.get("model_path"),
-        db_uris=cfg.get("db_uris", []),
-        kb_paths=cfg.get("kb_paths_list", []),
-    )
-    return Text2SQLAgent(
-        api_key=cfg["api_key"],
-        base_url=cfg["api_base"],
-        model_name=cfg["model_name"],
-        db_uris=cfg.get("db_uris", []),
-        rag_engine=rag,
-        max_retries=cfg.get("max_retries", 3),
-        max_candidates=cfg.get("max_candidates", 1),
-        log_file=cfg.get("log_file", "data/agent.log"),
-        config=cfg,
-        reasoner_model=cfg.get("reasoner_model", "deepseek-reasoner"),
-        use_reasoner_for_healing=cfg.get("use_reasoner_for_healing", True),
-    )
+    settings = DeepInsightSettings.from_mapping(cfg)
+    service = Text2SQLGraphService(settings)
+    return service.as_agent_adapter()
 
 
 # --- 懒加载 Agent ---
 @st.cache_resource
-def get_agent(cfg):
+def get_agent(_config_fingerprint, cfg):
     try:
-        runtime = cfg.get("query_runtime", "api")
-        endpoint = "/v1/query/graph/stream" if cfg.get("agent_backend", "graph") == "graph" else "/v1/query/stream"
+        runtime = cfg.get("query_runtime", "local")
 
         if runtime in {"api", "auto"}:
             api_agent = DeepInsightAPIClient(
                 base_url=cfg.get("api_server_url", "http://127.0.0.1:8000"),
-                endpoint=endpoint,
+                endpoint="/v1/query/graph/stream",
+                timeout=float(cfg.get("llm_timeout", 120.0)) + 30.0,
                 session_id=st.session_state.current_session_id,
             )
             if runtime == "api":
@@ -1311,6 +1282,17 @@ for msg_index, msg in enumerate(messages):
                     # 性能指标
                     if retrieval_info.get('metrics_display'):
                         st.caption(f"⏱️ {retrieval_info['metrics_display']}")
+
+            if msg.get("agent_trace"):
+                with st.expander("🧭 Agent Trace", expanded=False):
+                    for trace_step in msg["agent_trace"]:
+                        node = trace_step.get("node", "")
+                        status = trace_step.get("status", "")
+                        summary = trace_step.get("summary", "")
+                        latency = trace_step.get("latency_ms", 0)
+                        st.markdown(f"**{node}** · `{status}` · {latency} ms")
+                        if summary:
+                            st.caption(summary)
             
             # 1. 表选择过程信息持久化显示 (历史消息)
             if "table_selection_info" in msg and msg["table_selection_info"]:
@@ -1782,16 +1764,22 @@ for msg_index, msg in enumerate(messages):
 if prompt_input:
     # 懒加载
     agent = None
+    cfg = st.session_state.config
+    cfg_fingerprint = json.dumps({
+        k: cfg.get(k) for k in ("db_uris", "model_name", "api_key", "api_base",
+                                  "model_path", "chroma_path", "use_chroma_rag",
+                                  "query_runtime", "api_server_url", "llm_timeout")
+    }, sort_keys=True, default=str)
     if not st.session_state.agent_loaded:
         with st.status("🚀 首次运行，正在加载 OpenVINO 加速引擎...", expanded=True) as status:
-            agent, err = get_agent(st.session_state.config)
+            agent, err = get_agent(cfg_fingerprint, cfg)
             if err:
                 status.update(label="❌ 初始化失败", state="error")
                 st.error(err); st.stop()
             st.session_state.agent_loaded = True
             status.update(label="✅ 引擎加载完毕", state="complete", expanded=False)
     else:
-        agent, err = get_agent(st.session_state.config)
+        agent, err = get_agent(cfg_fingerprint, cfg)
         if err: st.error(err); st.stop()
     
     # 确保agent已正确加载
@@ -1866,6 +1854,7 @@ if prompt_input:
             selected_possibility, alternatives = None, []
             latest_token_usage = None
             cumulative_token_usage = None
+            agent_trace = []
             result_from_cache = False
             # 表选择信息初始化（RAG重新设计后可能为空）
             table_selection_info = {
@@ -1937,6 +1926,10 @@ if prompt_input:
                         f"calls={usage.get('call_count', 0)}"
                     )
 
+                elif step["type"] == "agent_trace":
+                    agent_trace = step.get("trace", []) or []
+                    status_box.caption(f"🧭 Agent Trace: {len(agent_trace)} 个节点已记录")
+
                 elif step["type"] == "rag_enhancement":
                     # 显示 RAG 语义增强信息
                     pattern_count = step.get("pattern_count", 0)
@@ -2006,6 +1999,17 @@ if prompt_input:
                             st.caption(f"⏱️ {retrieval_display['metrics_display']}")
                     else:
                         st.caption("ℹ️ 二阶段知识检索未启用或无可用数据")
+
+                if agent_trace:
+                    with st.expander("🧭 Agent Trace", expanded=False):
+                        for trace_step in agent_trace:
+                            node = trace_step.get("node", "")
+                            status = trace_step.get("status", "")
+                            summary = trace_step.get("summary", "")
+                            latency = trace_step.get("latency_ms", 0)
+                            st.markdown(f"**{node}** · `{status}` · {latency} ms")
+                            if summary:
+                                st.caption(summary)
                 
                 # 0. 表选择过程信息持久化显示
                 if any(table_selection_info.values()):
@@ -2446,6 +2450,7 @@ if prompt_input:
                         "alternatives": alternatives_dict,
                         "table_selection_info": serializable_table_info,  # 使用可序列化的版本
                         "knowledge_retrieval": retrieval_display,  # 🆕 保存知识检索信息
+                        "agent_trace": agent_trace,
                         "charts": chart_export_data,  # 添加图表数据
                         "recommendations": recommendations  # 保存推荐到消息中
                     }
@@ -2500,7 +2505,8 @@ if prompt_input:
                         "token_usage": latest_token_usage,
                         "cumulative_token_usage": cumulative_token_usage,
                         "table_selection_info": serializable_table_info,  # 使用可序列化的版本
-                        "knowledge_retrieval": retrieval_display  # 🆕 保存知识检索信息
+                        "knowledge_retrieval": retrieval_display,  # 🆕 保存知识检索信息
+                        "agent_trace": agent_trace
                     }
                 
                 # 5. 原始数据折叠栏 (在生成阶段也显示出来)

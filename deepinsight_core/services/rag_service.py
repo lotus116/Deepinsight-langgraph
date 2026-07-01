@@ -114,8 +114,16 @@ class ChromaKnowledgeStore:
     ) -> None:
         id_list = list(ids)
         doc_list = list(documents)
+        if len(id_list) != len(doc_list):
+            raise ValueError(f"ids length ({len(id_list)}) != documents length ({len(doc_list)})")
+
         metadata_list = list(metadatas) if metadatas is not None else None
+        if metadata_list is not None and len(metadata_list) != len(id_list):
+            raise ValueError(f"metadatas length ({len(metadata_list)}) != ids length ({len(id_list)})")
+
         embedding_list = list(embeddings) if embeddings is not None else None
+        if embedding_list is not None and len(embedding_list) != len(id_list):
+            raise ValueError(f"embeddings length ({len(embedding_list)}) != ids length ({len(id_list)})")
 
         self.collection.upsert(
             ids=id_list,
@@ -266,6 +274,9 @@ class ChromaRAGBridge:
         self.searcher = ChromaRAGRoughSearcher(store)
 
     def attach(self, legacy_rag: Any) -> int:
+        if getattr(legacy_rag, "chroma_enabled", False):
+            return self.store.count()
+
         documents = list(getattr(legacy_rag, "documents", []) or [])
         if not documents:
             return 0
