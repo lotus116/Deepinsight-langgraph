@@ -1,174 +1,102 @@
-# DeepInsight 智能经营决策系统
+# DeepInsight LangGraph NL2SQL Agent
 
-> **基于 Intel OpenVINO™ 与 DeepSeek V3.2 的端云可切换混合部署架构**  
-> 适用于中小企业、分支机构及对数据合规有严苛要求的行业场景（如金融、制造、政务）
-
----
-
-## ✨ 核心特性
-
-| 维度 | 指标 |
-|------|------|
-| G1 Baseline | 平均 7424.4 ms, P95 12169.0 ms |
-| G2 RAG+KECA | 平均 9495.1 ms, P95 16686.3 ms |
-| G3 Full System | 平均 12006.9 ms, P95 25379.1 ms |
-| PyTorch FP32 | 3.4±0.1 ms, P95 4.4 ms, 292.8 QPS |
-| OpenVINO FP32 | 1.0±0.1 ms, P95 1.6 ms, 1013.8 QPS |
-| OpenVINO 加速比 | 3.46x（基于 10 轮平均结果） |
-
-说明：`performance_summary.json` 可能保留单轮结果；对外引用时建议优先使用 `averaged_performance_results.json` 与 `evaluation_report.md`。
-
----
+DeepInsight 是一个基于 LangGraph 的自然语言数据分析 Agent。用户在 Streamlit 前端输入业务问题后，系统会检索相关表和字段、规划 SQL、生成安全只读 SQL、执行查询、在失败时尝试修复，并返回表格、图表、业务洞察和 Agent Trace。
 
 ## 核心能力
 
-| 模块 | 当前能力 |
-|------|----------|
-| 自然语言理解 | 支持中文查询，自动生成 SQL 与业务解释 |
-| 检索增强 | 二阶段混合检索、KECA 术语/示例注入、外键依赖补全 |
-| Agent 自愈 | 基于错误上下文的重试修复，可选切换 Reasoner |
-| 可视化 | 自动生成交互式图表与商业洞察 |
-| 导出 | 支持 CSV、Word、PDF 等导出路径 |
-| 上下文能力 | 多轮对话与上下文记忆 |
-| 性能优化 | OpenVINO 推理加速、查询缓存、硬件遥测 |
-| 评测体系 | G1/G2/G3 对比、Token 统计、响应时间、P95 报告 |
+- LangGraph 多节点工作流：理解问题、Schema Linking、SQL Planning、SQL 生成、安全检查、执行、修复、结果校验。
+- RAG / Schema Linking：复用现有 `IntelRAG`，支持向量粗排、LLM 精排、术语匹配、Few-shot 示例匹配。
+- SQL 安全：默认只允许 `SELECT` / `WITH`，拒绝多语句和写操作，优先使用 `sqlglot` 做解析校验。
+- 前端 Demo：保留 Streamlit 聊天式界面，展示 SQL、结果表格、图表、业务洞察和 Agent Trace。
+- 评估套件：保留 `eval_suite/`，支持基于 Northwind / AdventureWorks 的执行准确率、延迟和 token 统计。
 
----
+## 当前架构
 
-## 🚀 快速开始
+```text
+Streamlit UI (app.py)
+  -> FastAPI SSE / local adapter
+  -> LangGraph NL2SQL Agent
+  -> RAG + SQL Safety + SQL Executor
+  -> Database
+```
 
-### 1. 安装依赖
+```mermaid
+flowchart TD
+    A[understand_query] --> B[retrieve_schema]
+    B --> C[plan_sql]
+    C --> D[generate_sql]
+    D --> E[safety_check]
+    E --> F[execute_sql]
+    F -->|error| G[repair_sql]
+    G --> E
+    F -->|success| H[validate_result]
+```
+
+## 项目结构
+
+```text
+deepinsight_core/
+  graph/          # LangGraph state、nodes、runner、events
+  nl2sql/         # SQL safety、NL2SQL typed payloads
+  services/       # API client、RAG adapter、SQL generation/execution service
+deepinsight_api/  # FastAPI backend
+eval_suite/       # benchmark、metrics、reports
+data/             # demo database、schema、prompt config
+ui/               # Streamlit styles and panels
+app.py            # Streamlit frontend entry
+```
+
+## 快速开始
 
 ```bash
-# 创建虚拟环境
-python -m venv venv
-
-# 激活虚拟环境
-# Windows:
-venv\Scripts\activate
-# Linux/macOS:
-source venv/bin/activate
-
-# 安装依赖
+conda activate deepinsight
 pip install -r requirements.txt
 ```
 
-### 2. 初始化示例数据库
+配置 `.env`：
 
 ```bash
-python tools/setup_northwind.py --user root --password <你的密码> --db northwind --sql "data/northwind.sql"
+DEEPINSIGHT_API_KEY=
+DEEPINSIGHT_API_BASE=https://api.deepseek.com
+DEEPINSIGHT_MODEL_NAME=deepseek-reasoner
+DEEPINSIGHT_QUERY_RUNTIME=api
+DEEPINSIGHT_API_SERVER_URL=http://127.0.0.1:8000
+DEEPINSIGHT_NORTHWIND_DB_URI=mysql+pymysql://root@localhost:3306/northwind
 ```
 
-### 3. 配置密钥
-
-复制 `.env.example` 为 `.env`，在本机填写模型服务密钥。仓库内的 `data/config.json` 不再保存真实 API key。
-
-### 4. 启动后端
+启动后端：
 
 ```bash
 uvicorn deepinsight_api.main:app --host 127.0.0.1 --port 8000
 ```
 
-### 5. 启动前端
+启动前端：
 
 ```bash
 streamlit run app.py
 ```
 
-### 6. 访问应用
+## 评估
 
-打开浏览器访问：`http://localhost:8501`
-
-默认架构为：
-
-```text
-Streamlit 前端 -> FastAPI 后端 -> LangGraph Text2SQL -> 可选 Chroma RAG -> 数据库
-```
-
-开发调试时可以在侧边栏将 `Query Runtime` 切换为 `auto` 或 `local`。
-
----
-
-## 评测命令
-
-### AdventureWorks 准确率评测
+快速冒烟：
 
 ```bash
-python -m eval_suite.run_all --accuracy-only --groups G2 G3 --database adventureworks --agent-backend graph
+python -m eval_suite.run_all --accuracy-only --test-mode --database northwind
 ```
 
-### 单轮评测
+单元测试：
 
 ```bash
-python -m eval_suite.run_all --database adventureworks --runs 1
+pytest tests/test_refactor_foundation.py -q
 ```
 
-### 仅性能评测（10 轮平均）
+## 安全约束
 
-```bash
-python -m eval_suite.run_all --performance-only --runs 10
-```
+- 不在仓库中保存真实 API Key。
+- 数据库密码建议只通过环境变量或本地 `.env` 提供。
+- 生产或演示环境请使用只读数据库账号。
+- `/v1/sql/execute` 仅面向本地 demo，不建议直接暴露到公网。
 
-输出目录：`eval_suite/results/`
+## 简历表述建议
 
----
-
-## 系统要求
-
-| 类型 | 要求 |
-|------|------|
-| **Python** | 3.8+ |
-| **操作系统** | Windows 10/11, Linux, macOS 10.15+ |
-| **内存** | 8GB RAM (推荐 16GB) |
-| **CPU** |别太拉应该都行 |
-| **GPU** (可选) | Intel Iris Xe / NVIDIA CUDA / AMD OpenCL |
-
----
-
-## 项目结构
-
-```text
-DeepInsight-refine/
-├── app.py
-├── agent_core.py
-├── rag_engine.py
-├── visualization_engine.py
-├── eval_suite/
-├── hardware/
-├── context_memory/
-├── ui/
-├── tools/
-├── data/
-├── docs/
-└── 论文撰写/
-```
-
-更完整的结构说明见 `docs/ARCHITECTURE.md`。
-
----
-
-## 安全与约束
-
-- SQL 安全检查以只读查询为目标，避免数据篡改风险。
-- 敏感业务数据优先在本地处理，云端侧重模型推理与最小化上下文暴露。
-- 当前系统主要面向分析型查询场景，不针对写入型数据库操作设计。
-
----
-
-## 相关文档
-
-| 文档 | 说明 |
-|------|------|
-| `docs/ARCHITECTURE.md` | 系统架构、模块划分与流程说明 |
-| `docs/project_explain_fin.md` | 技术实现细节与模块说明 |
-| `docs/硬件优化技术文档.md` | OpenVINO、缓存与性能优化相关设计 |
-| `docs/系统重构优化日志.md` | 重构与优化时间线、技术决策与最近更新 |
-| `eval_suite/results/evaluation_report.md` | 最新自动生成评测报告 |
-
----
-
-## 协作者
-
-- 项目重构、改进：严秋实
-- 项目负责人与核心开发：唐佳云、严秋实
-
+> 基于 LangGraph 构建自然语言数据分析 Agent，设计 Query Understanding、Schema Linking、SQL Planning、SQL Safety Check、Execution、Repair、Result Validation 多节点工作流；结合 RAG 检索相关表字段与 Few-shot 示例生成只读 SQL，并在 Streamlit 前端展示 SQL、表格、图表、业务洞察和 Agent Trace；基于 Northwind / AdventureWorks 构建评估套件统计执行准确率、修复成功率、延迟和 token 成本。

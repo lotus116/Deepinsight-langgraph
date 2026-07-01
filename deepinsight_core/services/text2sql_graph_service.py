@@ -78,6 +78,10 @@ class Text2SQLGraphService:
         print(f"[DeepInsight] Using DB URI: {self.settings.first_db_uri!r}")
         print(f"[DeepInsight] All DB URIs: {self.settings.db_uris!r}")
         db_engine = create_engine(self.settings.first_db_uri) if self.settings.first_db_uri else None
+
+        from deepinsight_core.tracing import install_langsmith_callback
+        install_langsmith_callback()
+
         return Text2SQLGraphRunner(
             rag_adapter=LegacyRAGAdapter(rag),
             generation_service=SQLGenerationService(
@@ -90,6 +94,11 @@ class Text2SQLGraphService:
             rag_llm_client=llm_client,
             rag_model_name=self.settings.model_name,
             rag_db_engine=db_engine,
+            trace_metadata={
+                "model_name": self.settings.model_name,
+                "db_uri": self.settings.first_db_uri.split("://")[0] if "://" in self.settings.first_db_uri else "unknown",
+                "use_chroma_rag": self.settings.use_chroma_rag,
+            },
         )
 
     def stream_query(self, query: str, session_id: str = "default") -> Iterable[Dict[str, Any]]:

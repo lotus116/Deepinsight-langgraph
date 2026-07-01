@@ -1101,6 +1101,7 @@ def get_agent(_config_fingerprint, cfg):
             api_agent = DeepInsightAPIClient(
                 base_url=cfg.get("api_server_url", "http://127.0.0.1:8000"),
                 endpoint="/v1/query/graph/stream",
+                timeout=float(cfg.get("llm_timeout", 120.0)) + 30.0,
                 session_id=st.session_state.current_session_id,
             )
             if runtime == "api":
@@ -1281,6 +1282,17 @@ for msg_index, msg in enumerate(messages):
                     # 性能指标
                     if retrieval_info.get('metrics_display'):
                         st.caption(f"⏱️ {retrieval_info['metrics_display']}")
+
+            if msg.get("agent_trace"):
+                with st.expander("🧭 Agent Trace", expanded=False):
+                    for trace_step in msg["agent_trace"]:
+                        node = trace_step.get("node", "")
+                        status = trace_step.get("status", "")
+                        summary = trace_step.get("summary", "")
+                        latency = trace_step.get("latency_ms", 0)
+                        st.markdown(f"**{node}** · `{status}` · {latency} ms")
+                        if summary:
+                            st.caption(summary)
             
             # 1. 表选择过程信息持久化显示 (历史消息)
             if "table_selection_info" in msg and msg["table_selection_info"]:
@@ -1842,6 +1854,7 @@ if prompt_input:
             selected_possibility, alternatives = None, []
             latest_token_usage = None
             cumulative_token_usage = None
+            agent_trace = []
             result_from_cache = False
             # 表选择信息初始化（RAG重新设计后可能为空）
             table_selection_info = {
@@ -1913,6 +1926,10 @@ if prompt_input:
                         f"calls={usage.get('call_count', 0)}"
                     )
 
+                elif step["type"] == "agent_trace":
+                    agent_trace = step.get("trace", []) or []
+                    status_box.caption(f"🧭 Agent Trace: {len(agent_trace)} 个节点已记录")
+
                 elif step["type"] == "rag_enhancement":
                     # 显示 RAG 语义增强信息
                     pattern_count = step.get("pattern_count", 0)
@@ -1982,6 +1999,17 @@ if prompt_input:
                             st.caption(f"⏱️ {retrieval_display['metrics_display']}")
                     else:
                         st.caption("ℹ️ 二阶段知识检索未启用或无可用数据")
+
+                if agent_trace:
+                    with st.expander("🧭 Agent Trace", expanded=False):
+                        for trace_step in agent_trace:
+                            node = trace_step.get("node", "")
+                            status = trace_step.get("status", "")
+                            summary = trace_step.get("summary", "")
+                            latency = trace_step.get("latency_ms", 0)
+                            st.markdown(f"**{node}** · `{status}` · {latency} ms")
+                            if summary:
+                                st.caption(summary)
                 
                 # 0. 表选择过程信息持久化显示
                 if any(table_selection_info.values()):
@@ -2422,6 +2450,7 @@ if prompt_input:
                         "alternatives": alternatives_dict,
                         "table_selection_info": serializable_table_info,  # 使用可序列化的版本
                         "knowledge_retrieval": retrieval_display,  # 🆕 保存知识检索信息
+                        "agent_trace": agent_trace,
                         "charts": chart_export_data,  # 添加图表数据
                         "recommendations": recommendations  # 保存推荐到消息中
                     }
@@ -2476,7 +2505,8 @@ if prompt_input:
                         "token_usage": latest_token_usage,
                         "cumulative_token_usage": cumulative_token_usage,
                         "table_selection_info": serializable_table_info,  # 使用可序列化的版本
-                        "knowledge_retrieval": retrieval_display  # 🆕 保存知识检索信息
+                        "knowledge_retrieval": retrieval_display,  # 🆕 保存知识检索信息
+                        "agent_trace": agent_trace
                     }
                 
                 # 5. 原始数据折叠栏 (在生成阶段也显示出来)

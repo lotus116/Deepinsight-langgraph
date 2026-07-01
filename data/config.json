@@ -12,7 +12,7 @@
         "data/schema_northwind.json"
     ],
     "model_path": "models/bge-small-ov",
-    "max_retries": 5,
+    "max_retries": 6,
     "max_candidates": 4,
     "log_file": "data/agent.log",
     "enable_ai_recommendations": true,
@@ -39,6 +39,6 @@
     "reasoner_model": "deepseek-reasoner",
     "query_runtime": "api",
     "api_server_url": "http://127.0.0.1:8000",
-    "llm_timeout": 45.0,
+    "llm_timeout": 120.0,
     "use_chroma_rag": false
 }

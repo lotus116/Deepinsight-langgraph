@@ -23,12 +23,27 @@ def code_chunk_event(content: str) -> Dict[str, Any]:
     return {"type": "code_chunk", "content": content}
 
 
+def thought_start_event() -> Dict[str, Any]:
+    return {"type": "thought_start"}
+
+
+def thought_chunk_event(content: str) -> Dict[str, Any]:
+    return {"type": "thought_chunk", "content": content}
+
+
 def token_usage_event(usage: Dict[str, int]) -> Dict[str, Any]:
     return {"type": "token_usage", "usage": usage}
 
 
-def result_event(sql: str, dataframe: pd.DataFrame, from_cache: bool = False) -> Dict[str, Any]:
-    return {"type": "result", "df": dataframe, "sql": sql, "from_cache": from_cache}
+def result_event(
+    sql: str,
+    dataframe: pd.DataFrame,
+    from_cache: bool = False,
+    **extra: Any,
+) -> Dict[str, Any]:
+    payload = {"type": "result", "df": dataframe, "sql": sql, "from_cache": from_cache}
+    payload.update({key: value for key, value in extra.items() if value is not None})
+    return payload
 
 
 def token_usage_zero_event() -> Dict[str, Any]:
@@ -42,6 +57,10 @@ def token_usage_zero_event() -> Dict[str, Any]:
             "breakdown": [],
         },
     }
+
+
+def trace_event(trace: Iterable[Dict[str, Any]]) -> Dict[str, Any]:
+    return {"type": "agent_trace", "trace": list(trace)}
 
 
 def append_events(state: Dict[str, Any], events: Iterable[Dict[str, Any]]) -> Dict[str, Any]:

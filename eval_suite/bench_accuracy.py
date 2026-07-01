@@ -438,14 +438,14 @@ class AccuracyBenchmark:
     # 数据库配置映射
     DATABASE_CONFIGS = {
         "northwind": {
-            "db_uri": "mysql+pymysql://root:123456@localhost:3306/northwind",
+            "db_uri": os.getenv("DEEPINSIGHT_NORTHWIND_DB_URI", "mysql+pymysql://root@localhost:3306/northwind"),
             "schema_path": "data/schema_northwind.json",
             "prompt_config_path": "data/prompt_config.json",
             "kb_paths": ["data/schema_northwind.json", "data/prompt_config.json"],
             "display_name": "Northwind"
         },
         "adventureworks": {
-            "db_uri": "mysql+pymysql://root:123456@localhost:3306/adventureworks",
+            "db_uri": os.getenv("DEEPINSIGHT_ADVENTUREWORKS_DB_URI", "mysql+pymysql://root@localhost:3306/adventureworks"),
             "schema_path": "data/schema_adventureworks.json",
             "prompt_config_path": "data/prompt_config_adventureworks.json",
             "kb_paths": [
@@ -469,7 +469,7 @@ class AccuracyBenchmark:
         
         self.config_path = Path(config_path)
         self.database = database.lower()
-self.config = self._load_config()
+        self.config = self._load_config()
         
         # 根据数据库覆盖配置
         if self.database in self.DATABASE_CONFIGS:

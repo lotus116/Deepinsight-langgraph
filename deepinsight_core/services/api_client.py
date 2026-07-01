@@ -13,6 +13,12 @@ class DeepInsightAPIError(RuntimeError):
     """Raised when the API backend cannot complete a request."""
 
 
+def _stream_error_text(response: httpx.Response) -> str:
+    """Read a streaming response before accessing its body text."""
+    response.read()
+    return response.text
+
+
 def parse_sse_events(lines: Iterable[str]) -> Generator[Dict[str, Any], None, None]:
     """Parse a minimal Server-Sent Events stream containing JSON data fields."""
     data_lines: List[str] = []
@@ -84,7 +90,7 @@ class DeepInsightAPIClient:
         try:
             with httpx.stream("POST", url, json=payload, timeout=self.timeout) as response:
                 if response.status_code >= 400:
-                    raise DeepInsightAPIError(response.text)
+                    raise DeepInsightAPIError(_stream_error_text(response))
                 for event in parse_sse_events(response.iter_lines()):
                     normalized = self._normalize_event(event)
                     if normalized is not None:
@@ -110,7 +116,7 @@ class DeepInsightAPIClient:
         try:
             with httpx.stream("POST", url, json=payload, timeout=self.timeout) as response:
                 if response.status_code >= 400:
-                    raise DeepInsightAPIError(response.text)
+                    raise DeepInsightAPIError(_stream_error_text(response))
                 for event in parse_sse_events(response.iter_lines()):
                     content = event.get("content")
                     if content:

@@ -2,6 +2,8 @@ streamlit
 fastapi
 uvicorn
 langgraph
+langsmith
+sqlglot
 openai
 pandas
 sqlalchemy

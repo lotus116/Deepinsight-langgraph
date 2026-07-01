@@ -558,6 +558,40 @@ class RefactorFoundationTests(unittest.TestCase):
         self.assertEqual(state["error_category"], "unknown_column")
         self.assertEqual(state["result"]["rows"], [{"total_orders": 2}])
 
+    def test_text2sql_stream_repairs_unknown_column_before_terminal_error(self):
+        engine = create_engine("sqlite:///:memory:")
+        with engine.begin() as conn:
+            conn.execute(text("CREATE TABLE orders (id INTEGER)"))
+            conn.execute(text("INSERT INTO orders VALUES (1)"))
+            conn.execute(text("INSERT INTO orders VALUES (2)"))
+
+        runner = Text2SQLGraphRunner(
+            rag_adapter=LegacyRAGAdapter(FakeRetrievalRAG()),
+            generation_service=SQLGenerationService(
+                SequenceFakeLLMClient(
+                    [
+                        "SELECT missing_col FROM orders",
+                        "SELECT COUNT(*) AS total_orders FROM orders",
+                    ]
+                ),
+                model_name="fake-model",
+            ),
+            sql_service=SQLService("sqlite:///:memory:", engine=engine),
+            enable_pruning=False,
+            max_healing_attempts=1,
+        )
+        events = list(runner.stream_query("how many orders"))
+        event_types = [event["type"] for event in events]
+
+        self.assertIn("error_log", event_types)
+        self.assertIn("result", event_types)
+        self.assertEqual(event_types.count("error"), 0)
+        self.assertTrue(
+            any(event.get("type") == "step" and event.get("msg") == "Repairing SQL" for event in events)
+        )
+        result = next(event for event in events if event["type"] == "result")
+        self.assertEqual(result["df"].to_dict("records"), [{"total_orders": 2}])
+
     def test_fastapi_health_and_missing_key_guard(self):
         from fastapi.testclient import TestClient
 
