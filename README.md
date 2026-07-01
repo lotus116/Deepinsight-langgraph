@@ -7,8 +7,11 @@ DeepInsight 是一个基于 LangGraph 的自然语言数据分析 Agent。用户
 - LangGraph 多节点工作流：理解问题、Schema Linking、SQL Planning、SQL 生成、安全检查、执行、修复、结果校验。
 - RAG / Schema Linking：复用现有 `IntelRAG`，支持向量粗排、LLM 精排、术语匹配、Few-shot 示例匹配。
 - SQL 安全：默认只允许 `SELECT` / `WITH`，拒绝多语句和写操作，优先使用 `sqlglot` 做解析校验。
-- 前端 Demo：保留 Streamlit 聊天式界面，展示 SQL、结果表格、图表、业务洞察和 Agent Trace。
-- 评估套件：保留 `eval_suite/`，支持基于 Northwind / AdventureWorks 的执行准确率、延迟和 token 统计。
+- 前端 Demo： Streamlit 聊天式界面，展示 SQL、结果表格、图表、业务洞察和 Agent Trace。
+- 评估套件： `eval_suite/`，支持基于 Northwind / AdventureWorks 的执行准确率、延迟和 token 统计。
+  
+> 基于 LangGraph 构建自然语言数据分析 Agent，设计 Query Understanding、Schema Linking、SQL Planning、SQL Safety Check、Execution、Repair、Result Validation 多节点工作流；结合 RAG 检索相关表字段与 Few-shot 示例生成只读 SQL，并在 Streamlit 前端展示 SQL、表格、图表、业务洞察和 Agent Trace；基于 Northwind / AdventureWorks 构建评估套件统计执行准确率、修复成功率、延迟和 token 成本。
+
 
 ## 当前架构
 
@@ -96,7 +99,3 @@ pytest tests/test_refactor_foundation.py -q
 - 数据库密码建议只通过环境变量或本地 `.env` 提供。
 - 生产或演示环境请使用只读数据库账号。
 - `/v1/sql/execute` 仅面向本地 demo，不建议直接暴露到公网。
-
-## 简历表述建议
-
-> 基于 LangGraph 构建自然语言数据分析 Agent，设计 Query Understanding、Schema Linking、SQL Planning、SQL Safety Check、Execution、Repair、Result Validation 多节点工作流；结合 RAG 检索相关表字段与 Few-shot 示例生成只读 SQL，并在 Streamlit 前端展示 SQL、表格、图表、业务洞察和 Agent Trace；基于 Northwind / AdventureWorks 构建评估套件统计执行准确率、修复成功率、延迟和 token 成本。
